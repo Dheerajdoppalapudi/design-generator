@@ -1,0 +1,8 @@
+NODE_ENV=test npx prisma migrate dev --name init  -> move to testing environment
+npm test - > run tests
+npm run test:coverage -> run tests and coverage report
+
+// to migrate back
+
+npx prisma migrate dev --name init
+NODE_ENV=development npx prisma migrate dev --name init
