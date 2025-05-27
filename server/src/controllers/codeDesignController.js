@@ -3,56 +3,42 @@ import fs from 'fs';
 import path from 'path';
 
 // Groq API configuration
-const GROQ_API_KEY = process.env.GROQ_API_KEY || "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";
+const GROQ_API_KEY = process.env.GROQ_API_KEY || "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";
 
 // Function to make API request to Groq
-function makeGroqRequest(prompt) {
-    return new Promise((resolve, reject) => {
-        const data = JSON.stringify({
-            messages: [{ role: "user", content: prompt }],
-            model: "llama-3.3-70b-versatile"
-        });
+// Simplified function to make API request to Groq
+export async function makeGroqRequest(prompt) {
+    const payload = {
+        messages: [{ role: "user", content: prompt }],
+        model: "deepseek-r1-distill-llama-70b"
+    };
 
-        const options = {
-            hostname: 'api.groq.com',
-            port: 443,
-            path: '/openai/v1/chat/completions',
+    try {
+        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${GROQ_API_KEY}`,
-                'Content-Length': Buffer.byteLength(data)
-            }
-        };
-
-        const req = https.request(options, (res) => {
-            let body = '';
-
-            res.on('data', (chunk) => {
-                body += chunk;
-            });
-
-            res.on('end', () => {
-                try {
-                    const response = JSON.parse(body);
-                    if (response.choices && response.choices[0]) {
-                        resolve(response.choices[0].message.content);
-                    } else {
-                        reject(new Error('Invalid response format from Groq API'));
-                    }
-                } catch (error) {
-                    reject(new Error('Failed to parse API response'));
-                }
-            });
+                'Authorization': `Bearer ${GROQ_API_KEY}`
+            },
+            body: JSON.stringify(payload)
         });
 
-        req.on('error', (error) => {
-            reject(error);
-        });
+        if (!response.ok) {
+            throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+        }
 
-        req.write(data);
-        req.end();
-    });
+        const data = await response.json();
+        
+        if (!data.choices?.[0]?.message?.content) {
+            throw new Error('Invalid response format from Groq API');
+        }
+
+        return data.choices[0].message.content;
+
+    } catch (error) {
+        console.error('Groq API Error:', error.message);
+        throw error;
+    }
 }
 
 // Function to parse HTML files from response
@@ -156,10 +142,14 @@ export const generateHtmlPages = async (req, res) => {
             });
         }
 
-        // Format workflow for the prompt
-        const workflowText = formatWorkflowForPrompt(workflow);
+        // const workflowText = formatWorkflowForPrompt(workflow);
+
+        // console.log("workflowText: ",workflowText)
+        // console.log("siteType: ",siteType)
+        // console.log("designDescription: ",designDescription)
+        siteType
         
-        // Construct the comprehensive prompt
+
         const prompt = `
 You're a frontend web designer. Create a complete set of modern, visually cohesive HTML screens (with inline CSS in a <style> tag inside each file) for a ${siteType}.
 
@@ -200,11 +190,11 @@ OUTPUT FORMAT:
 Only output the raw HTML code for each file. Do not include explanations or markdown formatting.
         `;
 
-        console.log(`🚀 Generating HTML pages for: ${siteType}`);
+
+        console.log(`Generating HTML pages for: ${siteType}`);
 
         // Send request to Groq API
         const response = await makeGroqRequest(prompt);
-        console.log('📥 Received response from Groq API');
 
         // Parse HTML files from response
         const htmlFiles = parseHtmlFiles(response);
@@ -245,7 +235,7 @@ Only output the raw HTML code for each file. Do not include explanations or mark
                     contentLength: file.content.length,
                     sizeKB: Math.round(file.content.length / 1024)
                 })),
-                htmlFiles: htmlFiles, // Full content for client use
+                htmlFiles: htmlFiles, 
                 ...(savedInfo && { savedTo: savedInfo.projectDir })
             }
         });

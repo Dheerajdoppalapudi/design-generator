@@ -3,7 +3,7 @@ import React, { useContext, useState } from 'react';
 import { Typography, Space, message, Spin, Button } from 'antd';
 import { ThemeContext } from '../context/ThemeContext';
 import { AuthContext } from '../context/AuthContext';
-import { FileTextOutlined, LoadingOutlined, AppstoreOutlined, ReloadOutlined, CodeOutlined } from '@ant-design/icons';
+import { FileTextOutlined, LoadingOutlined, AppstoreOutlined, ReloadOutlined, CodeOutlined, ManOutlined } from '@ant-design/icons';
 import DescriptionInput from '../components/DescriptionInput';
 import QuestionsFlow from '../components/QuestionsFlow';
 import ResultsView from '../components/ResultsView';
@@ -37,65 +37,6 @@ const DocumentsPage = () => {
   const [htmlPagesError, setHtmlPagesError] = useState('');
   const [loadingMsgIndex, setLoadingMsgIndex] = useState(0);
 
-  // Static workflow data for demo purposes
-  const staticWorkflowData = {
-    "success": true,
-    "data": {
-      "workflow": [
-        {
-          "id": "dashboard",
-          "title": "Dashboard",
-          "description": "Welcome to our drone booking application. Book your agricultural drone services today.",
-          "icon": "",
-          "position": 1,
-          "isStartPoint": true,
-          "nextScreens": ["date-selection"],
-          "previousScreens": []
-        },
-        {
-          "id": "date-selection",
-          "title": "Select Date",
-          "description": "Choose a date for your drone service from our calendar.",
-          "icon": "",
-          "position": 2,
-          "isStartPoint": false,
-          "nextScreens": ["slot-selection"],
-          "previousScreens": ["dashboard"]
-        },
-        {
-          "id": "slot-selection",
-          "title": "Select Slot",
-          "description": "Choose an available slot on your selected date for drone service.",
-          "icon": "",
-          "position": 3,
-          "isStartPoint": false,
-          "nextScreens": ["payment"],
-          "previousScreens": ["date-selection"]
-        },
-        {
-          "id": "payment",
-          "title": "Make Payment",
-          "description": "Securely pay for your drone service using our integrated payment gateways.",
-          "icon": "",
-          "position": 4,
-          "isStartPoint": false,
-          "nextScreens": ["booking-history"],
-          "previousScreens": ["slot-selection"]
-        },
-        {
-          "id": "booking-history",
-          "title": "Booking History",
-          "description": "View your past drone bookings in a clear and concise table.",
-          "icon": "",
-          "position": 5,
-          "isStartPoint": false,
-          "nextScreens": [],
-          "previousScreens": ["payment"]
-        }
-      ]
-    }
-  };
-
   const loadingMessages = [
     "Generating workflow based on your requirements...",
     "Creating application screens...",
@@ -121,10 +62,10 @@ const DocumentsPage = () => {
   React.useEffect(() => {
     let interval;
     if (workflowLoading || wireframeLoading || htmlPagesLoading) {
-      const messages = workflowLoading ? loadingMessages : 
-                     wireframeLoading ? wireframeLoadingMessages : 
-                     htmlPagesLoadingMessages;
-      
+      const messages = workflowLoading ? loadingMessages :
+        wireframeLoading ? wireframeLoadingMessages :
+          htmlPagesLoadingMessages;
+
       interval = setInterval(() => {
         setLoadingMsgIndex((prev) => (prev + 1) % messages.length);
       }, 1800);
@@ -140,60 +81,62 @@ const DocumentsPage = () => {
     setLoading(true);
 
     try {
-      // Static response for demo - replace with actual API call
+      // const response = await apiRequest(
+      //   'http://localhost:8000/api/designs/process',
+      //   'POST',
+      //   { description: description },
+      //   user?.token
+      // );
+
       const response = {
-        "data": {
-          "message": "Description processed successfully",
-          "questions": [
-            {
-              "question": "What type of drone application is this?",
-              "options": [
-                "Commercial (agricultural use)",
-                "Recreational (personal use)",
-                "Delivery/Aerial Photography",
-                "Other (please specify)"
-              ]
-            },
-            {
-              "question": "What are the primary features that need to be showcased on the homepage?",
-              "options": [
-                "Latest drone models and prices",
-                "Promotions and discounts",
-                "User testimonials and reviews",
-                "All of the above"
-              ]
-            },
-            {
-              "question": "How would you like to display the booking process?",
-              "options": [
-                "Step-by-step wizard (multiple screens)",
-                "Single-page form with validation",
-                "Slide-out or popup modal for each step"
-              ]
-            },
-            {
-              "question": "What is the primary layout for the 'Booking History' section?",
-              "options": [
-                "List view with details on a separate screen",
-                "Grid view with brief information and drill-down to details",
-                "Calendar view showing all bookings by date"
-              ]
-            },
-            {
-              "question": "Are there any specific design requirements or constraints (e.g. branding guidelines, color scheme, font styles)?",
-              "options": [
-                "Yes, provide the details",
-                "No, let's discuss and determine together",
-                "Not at this time, we'll decide later"
-              ]
-            }
-          ]
-        },
-        "success": true
-      };
+        "success": true,
+        "message": "Description processed successfully",
+        "questions": [
+          {
+            "question": "What type of design do you want?",
+            "options": [
+              "Website",
+              "Mobile App",
+              "Both Website & Mobile App"
+            ]
+          },
+          {
+            "question": "How important is user authentication for this application?",
+            "options": [
+              "Very Important - Users need to be logged in to book drones",
+              "Somewhat Important - Users can browse booking options without logging in, but may need to log in to proceed with booking",
+              "Not Very Important - Anyone can access booking options without logging in"
+            ]
+          },
+          {
+            "question": "Do you have any specific color scheme or branding guidelines for the drone company?",
+            "options": [
+              "Yes, please provide me with the guidelines",
+              "No, but I'd like to explore some standard color schemes and fonts",
+              "I don't know, can you suggest some options"
+            ]
+          },
+          {
+            "question": "How would you like to design the booking process? Should it be a multi-step process or a single form with all required fields?",
+            "options": [
+              "Multi-Step Process",
+              "Single Form with all required fields",
+              "Hybrid - Single form with some steps and optional fields"
+            ]
+          },
+          {
+            "question": "Are there any specific features you would like to include in the booking history section of the application?",
+            "options": [
+              "Show all bookings, with details such as date, slot, and drone type",
+              "Allow users to cancel or edit existing bookings",
+              "Provide analytics or insights on user's booking history"
+            ]
+          }
+        ]
+      }
 
       if (response.success) {
-        setQuestions(response.data.questions || []);
+        setQuestions(response.questions || []);
         setCurrentStep('questions');
       } else {
         setErrorMsg(response.error || 'Failed to process description');
@@ -211,18 +154,22 @@ const DocumentsPage = () => {
     setErrorMsg("");
 
     try {
-      // Static response for demo - replace with actual API call
+      // const response = await apiRequest(
+      //   'http://localhost:8000/api/designs/construct-description',
+      //   'POST',
+      //   { description, answers: answeredQuestions },
+      //   user?.token
+      // );
+
       const response = {
-        "data": {
-          "message": "Constructed better description successfully",
-          "improvedDescription": "Here is the improved design description based on the user input:\n\n**Design Description**\n\nThe drone application will be designed for recreational personal use. The primary features of the app include:\n\n* **Homepage**: Displaying promotions and discounts to attract users, providing an engaging entry point into the app.\n* **Booking Process**:\n\t+ Users can select a date and slot for booking a drone.\n\t+ A single-page form with validation will be used to ensure accurate information is provided.\n\t+ The booking process will be straightforward and easy to navigate.\n* **Booking History**: A grid view layout will display brief information about each booking, including:\n\t+ Date and time of the booking\n\t+ Drone type or name\n\t+ Brief status (e.g. \"pending\", \"completed\")\n* Users can drill down into details for each booking by tapping on a specific entry in the grid view.\n* The app will allow users to easily navigate between different sections, including booking history.\n\n**Additional Requirements**\n\nNone specified, but we will discuss and determine any design requirements or constraints together (e.g. branding guidelines, color scheme, font styles)."
-        },
-        "success": true
-      };
+        "message": "Constructed better description successfully",
+        "success": true,
+        "improvedDescription": "Here is the improved design description:\n\n**Design Description**\n\n**Application:** Drone Booking Application for Spraying Services\n\n**Overview:** The application will allow users to book drones for spraying services on a specific date and time slot. The app will have a homepage, booking functionality, and user account management.\n\n**Key Features:**\n\n1. **Homepage:** A visually appealing page that showcases available drone options, upcoming events, or promotions.\n2. **Booking Process:**\n\t* Users can browse available drones and select their preferred date and slot on a single form with all required fields (date, time slot, drone type).\n\t* Upon submission, the app will confirm the booking details and allow users to proceed with payment processing.\n3. **User Account Management:** Users can log in to access their account information and view their booking history.\n4. **Booking History:**\n\t* A dedicated section within the user account where bookings are listed with details such as date, slot, and drone type.\n\n**Design Requirements:**\n\n1. Mobile App design for both iOS and Android platforms\n2. Standard color scheme and font suggestions will be explored to ensure a professional look and feel\n\n**User Authentication:** User authentication is somewhat important, allowing users to browse booking options without logging in but requiring login to proceed with booking and access account information.\n\nThis improved description includes a more detailed overview of the application's features and requirements, making it easier for the design team to create an effective and user-friendly design."
+      }
 
       if (response.success) {
         message.success('Your design requirements have been submitted!');
-        setImprovedDescription(response.data.improvedDescription || 'Thank you for your submission. Our design team will review your requirements and get back to you shortly.');
+        setImprovedDescription(response.improvedDescription || 'Thank you for your submission. Our design team will review your requirements and get back to you shortly.');
         setCurrentStep('results');
       } else {
         setErrorMsg(response.error || 'Failed to submit your answers');
@@ -275,8 +222,101 @@ const DocumentsPage = () => {
     setErrorMsg("");
 
     try {
-      // Using static data for demo - replace with actual API call
-      const response = staticWorkflowData;
+      // const response = await apiRequest(
+      //   'http://localhost:8000/api/designs/generate-pages',
+      //   'POST',
+      //   { description: improvedDescription, answers },
+      //   user?.token
+      // );
+
+      const response = {
+        "success": true,
+        "data": {
+          "workflow": [
+            {
+              "id": "dashboard",
+              "title": "Dashboard",
+              "description": "Welcome screen displaying available drone options and promotions.",
+              "position": 1,
+              "isStartPoint": true,
+              "nextScreens": [
+                "login"
+              ]
+            },
+            {
+              "id": "login",
+              "title": "Login",
+              "description": "Users can log in to access their account information and proceed with booking.",
+              "position": 2,
+              "previousScreens": [
+                "dashboard"
+              ],
+              "nextScreens": [
+                "booking-selection",
+                "create-account"
+              ]
+            },
+            {
+              "id": "create-account",
+              "title": "Create Account",
+              "description": "New users can create an account to access their booking history and proceed with booking.",
+              "position": 3,
+              "previousScreens": [
+                "login"
+              ],
+              "nextScreens": [
+                "booking-selection"
+              ]
+            },
+            {
+              "id": "booking-selection",
+              "title": "Book Drone",
+              "description": "Users can select a drone, date, and time slot for booking on a single form.",
+              "position": 4,
+              "previousScreens": [
+                "login",
+                "create-account"
+              ],
+              "nextScreens": [
+                "payment-processing"
+              ]
+            },
+            {
+              "id": "payment-processing",
+              "title": "Pay Now",
+              "description": "Users can proceed with payment processing to confirm their booking details.",
+              "position": 5,
+              "previousScreens": [
+                "booking-selection"
+              ],
+              "nextScreens": [
+                "booking-confirmation"
+              ]
+            },
+            {
+              "id": "booking-confirmation",
+              "title": "Booking Confirmed",
+              "description": "Users can view a summary of their booking, including date, slot, and drone type.",
+              "position": 6,
+              "previousScreens": [
+                "payment-processing"
+              ],
+              "nextScreens": []
+            },
+            {
+              "id": "account-management",
+              "title": "Account Settings",
+              "description": "Users can access their account information and view booking history from this section.",
+              "position": 7,
+              "previousScreens": [
+                "login",
+                "create-account"
+              ],
+              "nextScreens": []
+            }
+          ]
+        }
+      }
 
       if (response.success) {
         message.success('Workflow generated successfully!');
@@ -305,9 +345,195 @@ const DocumentsPage = () => {
         user?.token
       );
 
+      // const response = {
+      //   "success": true,
+      //   "message": "Wireframe generated successfully",
+      //   "wireframe": {
+      //     "app": {
+      //       "name": "Drone Booking App",
+      //       "description": "Agricultural drone booking application",
+      //       "theme": {
+      //         "primary": "#1890ff",
+      //         "secondary": "#52c41a",
+      //         "background": "#f5f5f5",
+      //         "text": "#262626",
+      //         "error": "#ff4d4f",
+      //         "success": "#52c41a",
+      //         "warning": "#faad14",
+      //         "border": "#d9d9d9",
+      //         "surface": "#ffffff",
+      //         "accent": "#722ed1"
+      //       },
+      //       "nav": {
+      //         "type": "tabs",
+      //         "items": [
+      //           {
+      //             "name": "Home",
+      //             "icon": "home",
+      //             "screen": "dashboard"
+      //           }
+      //         ]
+      //       }
+      //     },
+      //     "screens": [
+      //       {
+      //         "name": "dashboard",
+      //         "title": "Dashboard",
+      //         "description": "Welcome to our drone booking application. Book your agricultural drone services today.",
+      //         "workflowPosition": 1,
+      //         "isStartPoint": true,
+      //         "nextScreens": [
+      //           "date-selection"
+      //         ],
+      //         "components": [
+      //           {
+      //             "id": "header-1",
+      //             "type": "Header",
+      //             "dataProperties": {
+      //               "title": "Dashboard",
+      //               "subtitle": "Agricultural Drone Services"
+      //             },
+      //             "designProperties": {
+      //               "backgroundColor": "#1890ff",
+      //               "textColor": "#ffffff",
+      //               "height": 60,
+      //               "alignment": "center",
+      //               "hasBack": false,
+      //               "hasMenu": true,
+      //               "elevation": 2
+      //             }
+      //           },
+      //           {
+      //             "id": "carousel-1",
+      //             "type": "Carousel",
+      //             "dataProperties": {
+      //               "items": [
+      //                 {
+      //                   "title": "Special Promotion!",
+      //                   "description": "Get 10% off your first booking"
+      //                 },
+      //                 {
+      //                   "title": "New Feature!",
+      //                   "description": "Book multiple dates at once"
+      //                 }
+      //               ]
+      //             },
+      //             "designProperties": {
+      //               "height": 200,
+      //               "autoplay": true,
+      //               "dots": true,
+      //               "backgroundColor": "#ffffff",
+      //               "elevation": 1
+      //             }
+      //           },
+      //           {
+      //             "id": "card-book",
+      //             "type": "Card",
+      //             "dataProperties": {
+      //               "title": "Book Now",
+      //               "description": "Select a date and time for your drone service",
+      //               "icon": "plus",
+      //               "action": "navigate",
+      //               "navigationScreen": "date-selection"
+      //             },
+      //             "designProperties": {
+      //               "backgroundColor": "#ffffff",
+      //               "textColor": "#262626",
+      //               "elevation": 1,
+      //               "padding": 16,
+      //               "borderRadius": 8,
+      //               "margin": 8
+      //             }
+      //           },
+      //           {
+      //             "id": "card-history",
+      //             "type": "Card",
+      //             "dataProperties": {
+      //               "title": "Booking History",
+      //               "description": "View your previous bookings",
+      //               "icon": "calendar",
+      //               "action": "navigate",
+      //               "navigationScreen": "booking-history"
+      //             },
+      //             "designProperties": {
+      //               "backgroundColor": "#ffffff",
+      //               "textColor": "#262626",
+      //               "elevation": 1,
+      //               "padding": 16,
+      //               "borderRadius": 8,
+      //               "margin": 8
+      //             }
+      //           },
+      //           {
+      //             "id": "button-1",
+      //             "type": "Button",
+      //             "dataProperties": {
+      //               "text": "Start Booking",
+      //               "icon": "arrow-right",
+      //               "action": "navigate",
+      //               "navigationScreen": "date-selection"
+      //             },
+      //             "designProperties": {
+      //               "backgroundColor": "#1890ff",
+      //               "textColor": "#ffffff",
+      //               "height": 48,
+      //               "width": "100%",
+      //               "borderRadius": 8,
+      //               "elevation": 1,
+      //               "margin": 16
+      //             }
+      //           }
+      //         ]
+      //       }
+      //     ],
+      //     "data": {
+      //       "globalData": {
+      //         "user": {
+      //           "name": "User",
+      //           "avatar": "https://example.com/avatar.jpg"
+      //         }
+      //       },
+      //       "screenData": {
+      //         "dashboard": {
+      //           "screenInfo": {
+      //             "id": "dashboard",
+      //             "title": "Dashboard",
+      //             "description": "Welcome to our drone booking application. Book your agricultural drone services today."
+      //           }
+      //         }
+      //       }
+      //     },
+      //     "workflow": {
+      //       "currentScreen": "dashboard",
+      //       "totalScreens": 5,
+      //       "nextScreens": [
+      //         "date-selection"
+      //       ],
+      //       "isComplete": false
+      //     },
+      //     "metadata": {
+      //       "version": "2.0",
+      //       "generatedAt": "2025-01-01T00:00:00Z",
+      //       "description": "Generated wireframe for first screen",
+      //       "workflowBased": true
+      //     }
+      //   },
+      //   "validation": {
+      //     "isValid": true,
+      //     "warnings": []
+      //   },
+      //   "metadata": {
+      //     "generatedAt": "2025-05-26T12:17:39.313Z",
+      //     "inputLength": 1153,
+      //     "screenCount": 1,
+      //     "componentCount": 5
+      //   },
+      //   "timestamp": "2025-05-26T12:17:39.313Z"
+      // }
+
       if (response.success) {
-        message.success('Wireframe generated successfully!');
-        setWireframeData(response.data.wireframe);
+        console.log('Wireframe generated successfully!');
+        setWireframeData(response.wireframe);
       } else {
         setWireframeError(response.error || 'Failed to generate wireframe');
       }
@@ -328,10 +554,10 @@ const DocumentsPage = () => {
       const response = await apiRequest(
         'http://localhost:8000/api/codedesign/generate-html-pages',
         'POST',
-        { 
-          designDescription: improvedDescription, 
+        {
+          designDescription: improvedDescription,
           workflow: workflowData,
-          siteType: "drone booking application",
+          siteType: "e-commerce website",
           saveToFile: false
         },
         user?.token
@@ -635,7 +861,7 @@ const DocumentsPage = () => {
                           currentStep="workflow"
                           placement="corner"
                         />
-                        
+
                         <div style={{ display: 'flex', gap: '12px' }}>
                           <Button
                             type="default"
@@ -643,7 +869,7 @@ const DocumentsPage = () => {
                             icon={<AppstoreOutlined />}
                             onClick={handleGenerateWireframe}
                             loading={wireframeLoading}
-                            style={{...buttonStyles, backgroundColor: 'transparent', color: isDarkMode ? '#fff' : '#000'}}
+                            style={{ ...buttonStyles, backgroundColor: 'transparent', color: isDarkMode ? '#fff' : '#000' }}
                           >
                             Generate UI Wireframe
                           </Button>
@@ -711,7 +937,7 @@ const DocumentsPage = () => {
                 {wireframeData ? (
                   <div>
                     <WireframeDisplay wireframeData={wireframeData} isDarkMode={isDarkMode} />
-                    
+
                     {currentStep === 'wireframe' && (
                       <div style={{
                         display: 'flex',
@@ -726,7 +952,7 @@ const DocumentsPage = () => {
                           currentStep="wireframe"
                           placement="corner"
                         />
-                        
+
                         <Button
                           type="primary"
                           size="large"
@@ -758,7 +984,7 @@ const DocumentsPage = () => {
                         <Text>No wireframe data available. You can skip this step and generate HTML pages directly.</Text>
                       )}
                     </div>
-                    
+
                     <div style={{
                       display: 'flex',
                       justifyContent: 'space-between',
@@ -772,7 +998,7 @@ const DocumentsPage = () => {
                         currentStep="wireframe"
                         placement="corner"
                       />
-                      
+
                       <div style={{ display: 'flex', gap: '12px' }}>
                         {wireframeError && (
                           <Button
@@ -781,7 +1007,7 @@ const DocumentsPage = () => {
                             icon={<ReloadOutlined />}
                             onClick={handleGenerateWireframe}
                             loading={wireframeLoading}
-                            style={{...buttonStyles, backgroundColor: 'transparent', color: isDarkMode ? '#fff' : '#000'}}
+                            style={{ ...buttonStyles, backgroundColor: 'transparent', color: isDarkMode ? '#fff' : '#000' }}
                           >
                             Retry Generate Wireframe
                           </Button>
@@ -835,7 +1061,7 @@ const DocumentsPage = () => {
             ) : (
               <>
                 {htmlPagesData && htmlPagesData.length > 0 ? (
-                  <HTMLPagesDisplay 
+                  <HTMLPagesDisplay
                     htmlFiles={htmlPagesData}
                     isDarkMode={isDarkMode}
                     onRegeneratePages={handleRegenerateHtmlPages}
@@ -860,7 +1086,7 @@ const DocumentsPage = () => {
                         <Text>No HTML pages available. Please try generating again.</Text>
                       )}
                     </div>
-                    
+
                     {/* Retry button when HTML pages generation fails */}
                     {htmlPagesError && (
                       <div style={{

@@ -29,6 +29,7 @@ Return your response as a JSON array in the following format:
 User description: "${description}"
 `;
 
+    // Call Ollama API
     console.log("=============== HITTING AI FOR CONTEXT ===============")
     const ollamaResponse = await axios.post(
       "http://localhost:11434/api/generate",
@@ -52,14 +53,13 @@ User description: "${description}"
     }
 
     res.status(200).json({
-      success: true,
       message: "Description processed successfully",
       questions
     });
 
   } catch (error) {
     console.log("Error processing description:", error);
-    res.status(500).json({ error: "Failed to process description", success: false, });
+    res.status(500).json({ error: "Failed to process description" });
   }
 };
 
@@ -74,12 +74,11 @@ export const saveAnswers = async (req, res) => {
     // databse saving can be done here!
     res.status(200).json({
       message: "Answers saved successfully",
-      success: true,
     });
 
   } catch (error) {
     console.error("Error saving answers:", error);
-    res.status(500).json({ error: "Failed to save answers", success: false });
+    res.status(500).json({ error: "Failed to save answers" });
   }
 };
 
@@ -116,116 +115,12 @@ Return only the improved description as a string.
 
     res.status(200).json({
       message: "Constructed better description successfully",
-      success: true,
       improvedDescription
     });
 
   } catch (error) {
     console.error("Error constructing better description:", error);
-    res.status(500).json({ error: "Failed to construct better description", success: false });
-  }
-};
-
-const generateUserFlowsLLMPrompt = (description) => {
-  return `
-You are a specialized AI tasked with converting user requirements into a detailed mobile app workflow diagram. 
-The user has provided the following design description and preferences:
-
-DESIGN DESCRIPTION and USER PREFERENCES:
-${description}
-
-YOUR TASK:
-Generate a detailed workflow for a mobile application based on the above requirements.
-
-RESPONSE FORMAT:
-Respond ONLY with a valid JSON array of workflow screens. Each screen should be represented as a JSON object with the following structure:
-
-[
-  {
-    "id": "unique-identifier",
-    "title": "Screen Title",
-    "description": "A detailed description of this screen's purpose and functionality (40-60 words)",
-    "position": 1,
-    "isStartPoint": true/false,
-    "nextScreens": ["id of screen(s) that follow this one (must match 'id' field of other screens)"],
-    "previousScreens": ["id-of-previous-screen-1"]
-  },
-  ...
-]
-
-IMPORTANT GUIDELINES:
-1. Create between 5-9 screens that form a logical user journey
-2. First screen should have isStartPoint: true
-3. The title should be short (1-3 words)
-4. The description should clearly explain what the screen does
-5. Connections between screens should make logical sense
-6. Ensure the workflow represents a complete journey from start to completion
-7. Your response must be a parseable JSON array
-8. The workflow should begin with a dashboard/home screen and follow standard mobile app patterns
-
-EXAMPLES OF GOOD SCREEN TITLES:
-- Dashboard
-- Login
-- Product Selection
-- Payment
-- Confirmation
-- Profile
-- Settings
-- Summary
-- Review
-
-Output the JSON array only, with no additional text before or after it.
-`;
-};
-
-export const generatePages = async (req, res) => {
-  try {
-    const { description } = req.body;
-
-    // Generate the prompt for the LLM
-    const prompt = generateUserFlowsLLMPrompt(description);
-
-    // Call the LLM API
-    const response = await axios.post(
-      "http://localhost:11434/api/generate",
-      {
-        model: "llama3.1:latest",
-        prompt: prompt,
-        stream: false
-      }
-    );
-
-    let workflowData;
-    try {
-      // Extract JSON from the response
-      const jsonText = response.data.response;
-      workflowData = JSON.parse(jsonText);
-
-      // Validate the workflow data
-      if (!Array.isArray(workflowData) || workflowData.length === 0) {
-        throw new Error('Invalid workflow format');
-      }
-
-      // Return the workflow data to the client
-      res.json({
-        success: true,
-        data: {
-          workflow: workflowData
-        }
-      });
-    } catch (parseError) {
-      console.error('Error parsing LLM response:', parseError);
-      res.status(500).json({
-        success: false,
-        error: 'Failed to parse workflow data'
-      });
-    }
-  } catch (error) {
-    console.error('Error generating pages:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to generate workflow'
-    });
+    res.status(500).json({ error: "Failed to construct better description" });
   }
 };
 
@@ -271,6 +166,7 @@ const DEFAULT_THEME = {
   accent: "#722ed1"
 };
 
+// Enhanced component schemas with data and design properties
 const COMPONENT_SCHEMAS = {
   Header: {
     dataProperties: {
@@ -497,7 +393,7 @@ export const validateWireframe = (wireframeJson) => {
 };
 
 export const generateWireframeJson = async (improvedDescription, workflow, startScreen = null) => {
-  console.log("StartScreen: ", startScreen?.description)
+  console.log("StartScreen: ",startScreen.description)
   const prompt = `
 ROLE: You are a specialized UI wireframe generator for mobile apps using Ant Design components.
 
@@ -511,7 +407,6 @@ CRITICAL REQUIREMENTS:
 4. All screen references must be valid
 5. Separate dataProperties and designProperties for each component
 6. Follow kebab-case for screen names, camelCase for properties
-
 ${startScreen ? `7. Generate ONLY ONE screen: "${startScreen.id}" with title "${startScreen.title}"` : ''}
 
 ${startScreen ? `
@@ -639,50 +534,37 @@ Create 4-6 relevant components for this screen that match its purpose and descri
 Return ONLY the JSON structure. Ensure all validations pass.
 `;
 
-  console.log("\n=============== GENERATING WIREFRAME JSON WITH GROQ ===============");
+  console.log("\n=============== GENERATING IMPROVED WIREFRAME JSON ===============");
 
   try {
-    // Use Groq API instead of Ollama
-    const response = await makeGroqRequest(prompt);
+    const response = await axios.post(
+      "http://localhost:11434/api/generate",
+      {
+        model: "llama3.1:latest",
+        prompt: prompt,
+        stream: false,
+        options: {
+          temperature: 0.2,
+          top_p: 0.9,
+          num_predict: 4000
+        }
+      },
+    );
 
-    if (!response) {
-      throw new Error('Empty response from Groq API');
+    if (response.status !== 200) {
+      throw new Error(`Error from Ollama API: ${response.statusText}`);
     }
 
-    const rawText = response;
+    const result = response.data;
+    if (!result.response) {
+      throw new Error('Empty response from Ollama API');
+    }
 
-    // Extract JSON from the response
+    const rawText = result.response;
     const jsonText = extractJsonFromText(rawText);
     
     console.log("Generated JSON Preview:");
     console.log(jsonText.substring(0, 500) + "...");
-
-    // Commented out Ollama endpoint
-    // const response = await axios.post(
-    //   "http://localhost:11434/api/generate",
-    //   {
-    //     model: "llama3.1:latest",
-    //     prompt: prompt,
-    //     stream: false,
-    //     options: {
-    //       temperature: 0.2,
-    //       top_p: 0.9,
-    //       num_predict: 4000
-    //     }
-    //   },
-    // );
-
-    // if (response.status !== 200) {
-    //   throw new Error(`Error from Ollama API: ${response.statusText}`);
-    // }
-
-    // const result = response.data;
-    // if (!result.response) {
-    //   throw new Error('Empty response from Ollama API');
-    // }
-
-    // const rawText = result.response;
-    // const jsonText = extractJsonFromText(rawText);
 
     try {
       const wireframeJson = JSON.parse(jsonText);
@@ -703,8 +585,7 @@ Return ONLY the JSON structure. Ensure all validations pass.
           generatedAt: new Date().toISOString(),
           description: improvedDescription.length > 100
             ? improvedDescription.substring(0, 100) + "..."
-            : improvedDescription,
-          provider: "groq"
+            : improvedDescription
         };
       }
 
@@ -766,8 +647,6 @@ export const generateWireframe = async (req, res) => {
     const improvedDescription = description;
     console.log("Workflow: ", workflow[0])
     const wireframeJson = await generateWireframeJson(improvedDescription, workflow, workflow[0]);
-
-    console.log("wireframeJsonL ",wireframeJson)
 
     // Final validation before sending response
     const validation = validateWireframe(wireframeJson);
@@ -916,4 +795,110 @@ export const validateWireframeInput = (req, res, next) => {
   }
 
   next();
+};
+
+// Usage in your routes file:
+// router.post('/generate-wireframe', validateWireframeInput, logWireframeRequest, generateWireframe);
+
+const generateUserFlowsLLMPrompt = (description) => {
+  return `
+You are a specialized AI tasked with converting user requirements into a detailed mobile app workflow diagram. 
+The user has provided the following design description and preferences:
+
+DESIGN DESCRIPTION and USER PREFERENCES:
+${description}
+
+YOUR TASK:
+Generate a detailed workflow for a mobile application based on the above requirements.
+
+RESPONSE FORMAT:
+Respond ONLY with a valid JSON array of workflow screens. Each screen should be represented as a JSON object with the following structure:
+
+[
+  {
+    "id": "unique-identifier",
+    "title": "Screen Title",
+    "description": "A detailed description of this screen's purpose and functionality (40-60 words)",
+    "position": 1,
+    "isStartPoint": true/false,
+    "nextScreens": ["id of screen(s) that follow this one (must match 'id' field of other screens)"],
+    "previousScreens": ["id-of-previous-screen-1"]
+  },
+  ...
+]
+
+IMPORTANT GUIDELINES:
+1. Create between 5-9 screens that form a logical user journey
+2. First screen should have isStartPoint: true
+3. The title should be short (1-3 words)
+4. The description should clearly explain what the screen does
+5. Connections between screens should make logical sense
+6. Ensure the workflow represents a complete journey from start to completion
+7. Your response must be a parseable JSON array
+8. The workflow should begin with a dashboard/home screen and follow standard mobile app patterns
+
+EXAMPLES OF GOOD SCREEN TITLES:
+- Dashboard
+- Login
+- Product Selection
+- Payment
+- Confirmation
+- Profile
+- Settings
+- Summary
+- Review
+
+Output the JSON array only, with no additional text before or after it.
+`;
+};
+
+export const generatePages = async (req, res) => {
+  try {
+    const { description } = req.body;
+
+    // Generate the prompt for the LLM
+    const prompt = generateUserFlowsLLMPrompt(description);
+
+    // Call the LLM API
+    const response = await axios.post(
+      "http://localhost:11434/api/generate",
+      {
+        model: "llama3.1:latest",
+        prompt: prompt,
+        stream: false
+      }
+    );
+
+    let workflowData;
+    try {
+      // Extract JSON from the response
+      const jsonText = response.data.response;
+      workflowData = JSON.parse(jsonText);
+
+      // Validate the workflow data
+      if (!Array.isArray(workflowData) || workflowData.length === 0) {
+        throw new Error('Invalid workflow format');
+      }
+
+      // Return the workflow data to the client
+      res.json({
+        success: true,
+        data: {
+          workflow: workflowData
+        }
+      });
+    } catch (parseError) {
+      console.error('Error parsing LLM response:', parseError);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to parse workflow data'
+      });
+    }
+  } catch (error) {
+    console.error('Error generating pages:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to generate workflow'
+    });
+  }
 };
