@@ -1,6 +1,6 @@
-// DocumentsPage.jsx - Main container component with HTML Pages Display and Figma Export
+// DocumentsPage.jsx - Complete file with incremental wireframe generation and 15-second delays (Part 1)
 import React, { useContext, useState } from 'react';
-import { Typography, Space, message, Spin, Button } from 'antd';
+import { Typography, Space, message, Spin, Button, Progress } from 'antd';
 import { ThemeContext } from '../context/ThemeContext';
 import { AuthContext } from '../context/AuthContext';
 import { FileTextOutlined, LoadingOutlined, AppstoreOutlined, ReloadOutlined, CodeOutlined, ManOutlined } from '@ant-design/icons';
@@ -20,13 +20,21 @@ const DocumentsPage = () => {
   const { user } = useContext(AuthContext);
   const isDarkMode = theme === 'dark';
 
-  const [currentStep, setCurrentStep] = useState('description'); // 'description', 'questions', 'results', 'workflow', 'wireframe', 'htmlpages'
+  const [currentStep, setCurrentStep] = useState('description');
   const [description, setDescription] = useState('');
   const [questions, setQuestions] = useState([]);
   const [answers, setAnswers] = useState([]);
   const [improvedDescription, setImprovedDescription] = useState('');
   const [workflowData, setWorkflowData] = useState(null);
-  const [wireframeData, setWireframeData] = useState(null);
+
+  // Wireframe state
+  const [wireframeScreens, setWireframeScreens] = useState([]);
+  const [totalScreensCount, setTotalScreensCount] = useState(0);
+  const [currentScreenIndex, setCurrentScreenIndex] = useState(0);
+  const [wireframeGenerationComplete, setWireframeGenerationComplete] = useState(false);
+  const [isWaitingBetweenRequests, setIsWaitingBetweenRequests] = useState(false);
+  const [waitingCountdown, setWaitingCountdown] = useState(0);
+
   const [htmlPagesData, setHtmlPagesData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [workflowLoading, setWorkflowLoading] = useState(false);
@@ -37,26 +45,27 @@ const DocumentsPage = () => {
   const [htmlPagesError, setHtmlPagesError] = useState('');
   const [loadingMsgIndex, setLoadingMsgIndex] = useState(0);
 
-  const loadingMessages = [
+  // Move loading messages outside useEffect to avoid dependency issues
+  const loadingMessages = React.useMemo(() => [
     "Generating workflow based on your requirements...",
     "Creating application screens...",
     "Mapping user journeys...",
     "Almost there, finalizing your workflow..."
-  ];
+  ], []);
 
-  const wireframeLoadingMessages = [
+  const wireframeLoadingMessages = React.useMemo(() => [
     "Analyzing your workflow...",
     "Creating wireframe components...",
     "Mapping screen layouts...",
     "Finalizing your UI structure..."
-  ];
+  ], []);
 
-  const htmlPagesLoadingMessages = [
+  const htmlPagesLoadingMessages = React.useMemo(() => [
     "Generating HTML pages...",
     "Creating responsive layouts...",
     "Applying consistent styling...",
     "Finalizing your website pages..."
-  ];
+  ], []);
 
   // Setup loading message rotation
   React.useEffect(() => {
@@ -72,10 +81,70 @@ const DocumentsPage = () => {
     } else {
       setLoadingMsgIndex(0);
     }
-    return () => clearInterval(interval);
-  }, [workflowLoading, wireframeLoading, htmlPagesLoading]);
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
+  }, [workflowLoading, wireframeLoading, htmlPagesLoading, loadingMessages, wireframeLoadingMessages, htmlPagesLoadingMessages]);
 
-  const handleDescriptionSubmit = async (descText) => {
+  // Countdown timer for waiting between requests
+  React.useEffect(() => {
+    let countdownInterval;
+    if (isWaitingBetweenRequests && waitingCountdown > 0) {
+      countdownInterval = setInterval(() => {
+        setWaitingCountdown(prev => {
+          if (prev <= 1) {
+            setIsWaitingBetweenRequests(false);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => {
+      if (countdownInterval) {
+        clearInterval(countdownInterval);
+      }
+    };
+  }, [isWaitingBetweenRequests, waitingCountdown]);
+
+  const apiRequest = React.useCallback(async (url, method = 'GET', body = null, token = null) => {
+    try {
+      const headers = {
+        'Content-Type': 'application/json',
+      };
+
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const response = await fetch(url, {
+        method,
+        headers,
+        body: body ? JSON.stringify(body) : null,
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error: data?.error || 'Something went wrong',
+        };
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Network or parsing error:', error);
+      return {
+        success: false,
+        error: 'Network or parsing error',
+      };
+    }
+  }, []);
+
+  const handleDescriptionSubmit = React.useCallback(async (descText) => {
     setDescription(descText);
     setErrorMsg('');
     setLoading(true);
@@ -84,7 +153,7 @@ const DocumentsPage = () => {
       // const response = await apiRequest(
       //   'http://localhost:8000/api/designs/process',
       //   'POST',
-      //   { description: description },
+      //   { description: descText },
       //   user?.token
       // );
 
@@ -135,6 +204,7 @@ const DocumentsPage = () => {
         ]
       }
 
+
       if (response.success) {
         setQuestions(response.questions || []);
         setCurrentStep('questions');
@@ -146,9 +216,9 @@ const DocumentsPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [apiRequest, user?.token]);
 
-  const handleQuestionsComplete = async (answeredQuestions) => {
+  const handleQuestionsComplete = React.useCallback(async (answeredQuestions) => {
     setAnswers(answeredQuestions);
     setLoading(true);
     setErrorMsg("");
@@ -179,44 +249,9 @@ const DocumentsPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [apiRequest, description, user?.token]);
 
-  const apiRequest = async (url, method = 'GET', body = null, token = null) => {
-    try {
-      const headers = {
-        'Content-Type': 'application/json',
-      };
-
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-
-      const response = await fetch(url, {
-        method,
-        headers,
-        body: body ? JSON.stringify(body) : null,
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        return {
-          success: false,
-          error: data?.error || 'Something went wrong',
-        };
-      }
-
-      return data;
-    } catch (error) {
-      console.error('Network or parsing error:', error);
-      return {
-        success: false,
-        error: 'Network or parsing error',
-      };
-    }
-  };
-
-  const handleGeneratePages = async () => {
+  const handleGeneratePages = React.useCallback(async () => {
     setWorkflowLoading(true);
     setCurrentStep('workflow');
     setErrorMsg("");
@@ -318,9 +353,13 @@ const DocumentsPage = () => {
         }
       }
 
+
       if (response.success) {
         message.success('Workflow generated successfully!');
         setWorkflowData(response.data.workflow);
+
+        const screensCount = response.data.workflow?.length || 5;
+        setTotalScreensCount(screensCount);
       } else {
         setErrorMsg(response.error || 'Failed to generate workflow');
       }
@@ -330,222 +369,93 @@ const DocumentsPage = () => {
     } finally {
       setWorkflowLoading(false);
     }
-  };
+  }, [apiRequest, improvedDescription, answers, user?.token]);
 
-  const handleGenerateWireframe = async () => {
-    setWireframeLoading(true);
-    setWireframeError('');
-    setCurrentStep('wireframe');
-
+  const generateNextWireframeScreen = React.useCallback(async (screenIndex) => {
     try {
+      setCurrentScreenIndex(screenIndex);
+      setIsWaitingBetweenRequests(false);
+
+      console.log(`Starting generation of wireframe screen ${screenIndex + 1}/${totalScreensCount}`);
+
       const response = await apiRequest(
         'http://localhost:8000/api/designs/generate-wireframe',
         'POST',
-        { description: improvedDescription, workflow: workflowData },
+        {
+          description: improvedDescription,
+          workflow: workflowData,
+          screenIndex: screenIndex
+        },
         user?.token
       );
 
-      // const response = {
-      //   "success": true,
-      //   "message": "Wireframe generated successfully",
-      //   "wireframe": {
-      //     "app": {
-      //       "name": "Drone Booking App",
-      //       "description": "Agricultural drone booking application",
-      //       "theme": {
-      //         "primary": "#1890ff",
-      //         "secondary": "#52c41a",
-      //         "background": "#f5f5f5",
-      //         "text": "#262626",
-      //         "error": "#ff4d4f",
-      //         "success": "#52c41a",
-      //         "warning": "#faad14",
-      //         "border": "#d9d9d9",
-      //         "surface": "#ffffff",
-      //         "accent": "#722ed1"
-      //       },
-      //       "nav": {
-      //         "type": "tabs",
-      //         "items": [
-      //           {
-      //             "name": "Home",
-      //             "icon": "home",
-      //             "screen": "dashboard"
-      //           }
-      //         ]
-      //       }
-      //     },
-      //     "screens": [
-      //       {
-      //         "name": "dashboard",
-      //         "title": "Dashboard",
-      //         "description": "Welcome to our drone booking application. Book your agricultural drone services today.",
-      //         "workflowPosition": 1,
-      //         "isStartPoint": true,
-      //         "nextScreens": [
-      //           "date-selection"
-      //         ],
-      //         "components": [
-      //           {
-      //             "id": "header-1",
-      //             "type": "Header",
-      //             "dataProperties": {
-      //               "title": "Dashboard",
-      //               "subtitle": "Agricultural Drone Services"
-      //             },
-      //             "designProperties": {
-      //               "backgroundColor": "#1890ff",
-      //               "textColor": "#ffffff",
-      //               "height": 60,
-      //               "alignment": "center",
-      //               "hasBack": false,
-      //               "hasMenu": true,
-      //               "elevation": 2
-      //             }
-      //           },
-      //           {
-      //             "id": "carousel-1",
-      //             "type": "Carousel",
-      //             "dataProperties": {
-      //               "items": [
-      //                 {
-      //                   "title": "Special Promotion!",
-      //                   "description": "Get 10% off your first booking"
-      //                 },
-      //                 {
-      //                   "title": "New Feature!",
-      //                   "description": "Book multiple dates at once"
-      //                 }
-      //               ]
-      //             },
-      //             "designProperties": {
-      //               "height": 200,
-      //               "autoplay": true,
-      //               "dots": true,
-      //               "backgroundColor": "#ffffff",
-      //               "elevation": 1
-      //             }
-      //           },
-      //           {
-      //             "id": "card-book",
-      //             "type": "Card",
-      //             "dataProperties": {
-      //               "title": "Book Now",
-      //               "description": "Select a date and time for your drone service",
-      //               "icon": "plus",
-      //               "action": "navigate",
-      //               "navigationScreen": "date-selection"
-      //             },
-      //             "designProperties": {
-      //               "backgroundColor": "#ffffff",
-      //               "textColor": "#262626",
-      //               "elevation": 1,
-      //               "padding": 16,
-      //               "borderRadius": 8,
-      //               "margin": 8
-      //             }
-      //           },
-      //           {
-      //             "id": "card-history",
-      //             "type": "Card",
-      //             "dataProperties": {
-      //               "title": "Booking History",
-      //               "description": "View your previous bookings",
-      //               "icon": "calendar",
-      //               "action": "navigate",
-      //               "navigationScreen": "booking-history"
-      //             },
-      //             "designProperties": {
-      //               "backgroundColor": "#ffffff",
-      //               "textColor": "#262626",
-      //               "elevation": 1,
-      //               "padding": 16,
-      //               "borderRadius": 8,
-      //               "margin": 8
-      //             }
-      //           },
-      //           {
-      //             "id": "button-1",
-      //             "type": "Button",
-      //             "dataProperties": {
-      //               "text": "Start Booking",
-      //               "icon": "arrow-right",
-      //               "action": "navigate",
-      //               "navigationScreen": "date-selection"
-      //             },
-      //             "designProperties": {
-      //               "backgroundColor": "#1890ff",
-      //               "textColor": "#ffffff",
-      //               "height": 48,
-      //               "width": "100%",
-      //               "borderRadius": 8,
-      //               "elevation": 1,
-      //               "margin": 16
-      //             }
-      //           }
-      //         ]
-      //       }
-      //     ],
-      //     "data": {
-      //       "globalData": {
-      //         "user": {
-      //           "name": "User",
-      //           "avatar": "https://example.com/avatar.jpg"
-      //         }
-      //       },
-      //       "screenData": {
-      //         "dashboard": {
-      //           "screenInfo": {
-      //             "id": "dashboard",
-      //             "title": "Dashboard",
-      //             "description": "Welcome to our drone booking application. Book your agricultural drone services today."
-      //           }
-      //         }
-      //       }
-      //     },
-      //     "workflow": {
-      //       "currentScreen": "dashboard",
-      //       "totalScreens": 5,
-      //       "nextScreens": [
-      //         "date-selection"
-      //       ],
-      //       "isComplete": false
-      //     },
-      //     "metadata": {
-      //       "version": "2.0",
-      //       "generatedAt": "2025-01-01T00:00:00Z",
-      //       "description": "Generated wireframe for first screen",
-      //       "workflowBased": true
-      //     }
-      //   },
-      //   "validation": {
-      //     "isValid": true,
-      //     "warnings": []
-      //   },
-      //   "metadata": {
-      //     "generatedAt": "2025-05-26T12:17:39.313Z",
-      //     "inputLength": 1153,
-      //     "screenCount": 1,
-      //     "componentCount": 5
-      //   },
-      //   "timestamp": "2025-05-26T12:17:39.313Z"
-      // }
-
       if (response.success) {
-        console.log('Wireframe generated successfully!');
-        setWireframeData(response.wireframe);
+        // Add the new wireframe screen to the array immediately - REAL-TIME DISPLAY
+        setWireframeScreens(prev => {
+          const newScreens = [...prev, response.wireframe];
+          console.log(`✅ Wireframe screen ${screenIndex + 1} generated and displayed! Total screens: ${newScreens.length}/${totalScreensCount}`);
+          message.success(`Screen ${screenIndex + 1} generated successfully!`);
+          return newScreens;
+        });
+
+        // Check if we need to generate more screens
+        const nextScreenIndex = screenIndex + 1;
+        if (nextScreenIndex < totalScreensCount) {
+          // Start 15-second countdown before next request
+          console.log(`Waiting 15 seconds before generating screen ${nextScreenIndex + 1}...`);
+          setIsWaitingBetweenRequests(true);
+          setWaitingCountdown(15);
+
+          // Use setTimeout instead of manual countdown for more reliable timing
+          setTimeout(async () => {
+            setIsWaitingBetweenRequests(false);
+            await generateNextWireframeScreen(nextScreenIndex);
+          }, 15000);
+
+        } else {
+          // All screens generated
+          setWireframeGenerationComplete(true);
+          setWireframeLoading(false);
+          setIsWaitingBetweenRequests(false);
+          console.log(`✅ All ${totalScreensCount} wireframe screens generated successfully!`);
+          message.success(`All ${totalScreensCount} wireframe screens generated successfully!`);
+        }
       } else {
-        setWireframeError(response.error || 'Failed to generate wireframe');
+        setWireframeError(response.error || `Failed to generate wireframe screen ${screenIndex + 1}`);
+        setWireframeLoading(false);
+        setIsWaitingBetweenRequests(false);
+        message.error(`Failed to generate screen ${screenIndex + 1}`);
       }
     } catch (error) {
-      setWireframeError('Failed to generate wireframe');
-      console.error('Error generating wireframe:', error);
-    } finally {
+      setWireframeError(`Failed to generate wireframe screen ${screenIndex + 1}`);
       setWireframeLoading(false);
+      setIsWaitingBetweenRequests(false);
+      message.error(`Error generating screen ${screenIndex + 1}`);
+      console.error('Error generating wireframe screen:', error);
     }
-  };
+  }, [apiRequest, improvedDescription, workflowData, user?.token, totalScreensCount]);
 
-  const handleGenerateHtmlPages = async () => {
+  // Updated wireframe generation with 15-second delays
+  const handleGenerateWireframe = React.useCallback(async () => {
+    setWireframeLoading(true);
+    setWireframeError('');
+    setCurrentStep('wireframe');
+    setCurrentScreenIndex(0);
+    setWireframeScreens([]);
+    setWireframeGenerationComplete(false);
+    setIsWaitingBetweenRequests(false);
+    setWaitingCountdown(0);
+
+    // Start generating screens one by one
+    await generateNextWireframeScreen(0);
+  }, [generateNextWireframeScreen]);
+
+  const handleRetryWireframeGeneration = React.useCallback(async () => {
+    setWireframeError('');
+    await handleGenerateWireframe();
+  }, [handleGenerateWireframe]);
+
+  const handleGenerateHtmlPages = React.useCallback(async () => {
     setHtmlPagesLoading(true);
     setHtmlPagesError('');
     setCurrentStep('htmlpages');
@@ -557,6 +467,7 @@ const DocumentsPage = () => {
         {
           designDescription: improvedDescription,
           workflow: workflowData,
+          wireframeScreens: wireframeScreens,
           siteType: "e-commerce website",
           saveToFile: false
         },
@@ -575,14 +486,13 @@ const DocumentsPage = () => {
     } finally {
       setHtmlPagesLoading(false);
     }
-  };
+  }, [apiRequest, improvedDescription, workflowData, wireframeScreens, user?.token]);
 
-  const handleRegenerateHtmlPages = async () => {
+  const handleRegenerateHtmlPages = React.useCallback(async () => {
     setHtmlPagesError('');
     await handleGenerateHtmlPages();
-  };
+  }, [handleGenerateHtmlPages]);
 
-  // Custom spinner icon that matches the app theme
   const spinIcon = <LoadingOutlined style={{
     fontSize: 60,
     color: isDarkMode ? '#00d2ff' : '#0ea5e9'
@@ -594,7 +504,6 @@ const DocumentsPage = () => {
     padding: '60px 20px',
   };
 
-  // Professional button styles
   const buttonStyles = {
     height: '48px',
     padding: '0 32px',
@@ -605,15 +514,14 @@ const DocumentsPage = () => {
     borderColor: '#1890ff',
   };
 
-  // Get current design data for Figma export
-  const getCurrentDesignData = () => ({
+  const getCurrentDesignData = React.useCallback(() => ({
     workflow: workflowData,
-    wireframeData: wireframeData,
+    wireframeData: wireframeScreens,
     improvedDescription: improvedDescription,
     answers: answers,
     description: description,
     htmlFiles: htmlPagesData
-  });
+  }), [workflowData, wireframeScreens, improvedDescription, answers, description, htmlPagesData]);
 
   return (
     <div style={{
@@ -920,7 +828,8 @@ const DocumentsPage = () => {
               Step 5: UI Wireframe
             </Title>
 
-            {wireframeLoading ? (
+            {/* Show loading only if no screens are generated yet */}
+            {wireframeLoading && wireframeScreens.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '60px 0' }}>
                 <Spin indicator={spinIcon} />
                 <Paragraph style={{
@@ -931,19 +840,41 @@ const DocumentsPage = () => {
                 }}>
                   {wireframeLoadingMessages[loadingMsgIndex]}
                 </Paragraph>
+
+                <div style={{ maxWidth: '400px', margin: '20px auto' }}>
+                  <Progress
+                    percent={0}
+                    format={() => `Starting wireframe generation...`}
+                    strokeColor={isDarkMode ? '#00d2ff' : '#0ea5e9'}
+                  />
+                </div>
               </div>
             ) : (
               <>
-                {wireframeData ? (
+                {/* Show wireframes immediately as they are generated */}
+                {wireframeScreens.length > 0 && (
                   <div>
-                    <WireframeDisplay wireframeData={wireframeData} isDarkMode={isDarkMode} />
+                    <WireframeDisplay
+                      wireframeScreens={wireframeScreens}
+                      isDarkMode={isDarkMode}
+                      isMultiScreen={true}
+                      totalScreens={totalScreensCount}
+                      currentGeneratingIndex={currentScreenIndex}
+                      isLoading={wireframeLoading}
+                      isWaitingBetweenRequests={isWaitingBetweenRequests}
+                      waitingCountdown={waitingCountdown}
+                    />
 
                     {currentStep === 'wireframe' && (
                       <div style={{
                         display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'center',
-                        marginTop: '30px'
+                        marginTop: '30px',
+                        padding: '20px',
+                        background: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
+                        borderRadius: '8px',
+                        border: isDarkMode ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgba(0,0,0,0.05)'
                       }}>
                         <FigmaExportButton
                           designData={getCurrentDesignData()}
@@ -953,20 +884,88 @@ const DocumentsPage = () => {
                           placement="corner"
                         />
 
-                        <Button
-                          type="primary"
-                          size="large"
-                          icon={<CodeOutlined />}
-                          onClick={handleGenerateHtmlPages}
-                          loading={htmlPagesLoading}
-                          style={buttonStyles}
-                        >
-                          Generate HTML Pages
-                        </Button>
+                        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                          {/* Generation status indicator */}
+                          {wireframeLoading && !wireframeGenerationComplete && (
+                            <div style={{
+                              padding: '8px 16px',
+                              background: isDarkMode ? 'rgba(24, 144, 255, 0.1)' : 'rgba(24, 144, 255, 0.1)',
+                              borderRadius: '6px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px',
+                              border: '1px solid #1890ff'
+                            }}>
+                              <LoadingOutlined style={{ color: '#1890ff' }} />
+                              <Text style={{ color: '#1890ff', fontSize: '14px', fontWeight: '500' }}>
+                                {isWaitingBetweenRequests
+                                  ? `Next screen in ${waitingCountdown}s`
+                                  : `Generating screen ${currentScreenIndex + 1}...`
+                                }
+                              </Text>
+                            </div>
+                          )}
+
+                          {/* Completion indicator */}
+                          {wireframeGenerationComplete && (
+                            <div style={{
+                              padding: '8px 16px',
+                              background: isDarkMode ? 'rgba(82, 196, 26, 0.1)' : 'rgba(82, 196, 26, 0.1)',
+                              borderRadius: '6px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px',
+                              border: '1px solid #52c41a'
+                            }}>
+                              <CheckOutlined style={{ color: '#52c41a' }} />
+                              <Text style={{ color: '#52c41a', fontSize: '14px', fontWeight: '500' }}>
+                                All wireframes generated!
+                              </Text>
+                            </div>
+                          )}
+
+                          {/* Generate HTML Pages Button - Always show, enable when wireframes complete */}
+                          <Button
+                            type="primary"
+                            size="large"
+                            icon={<CodeOutlined />}
+                            onClick={handleGenerateHtmlPages}
+                            loading={htmlPagesLoading}
+                            disabled={!wireframeGenerationComplete && wireframeLoading}
+                            style={{
+                              ...buttonStyles,
+                              opacity: (!wireframeGenerationComplete && wireframeLoading) ? 0.6 : 1
+                            }}
+                          >
+                            Generate HTML Pages
+                          </Button>
+
+                          {/* Retry wireframe button if there's an error */}
+                          {wireframeError && (
+                            <Button
+                              type="default"
+                              size="large"
+                              icon={<ReloadOutlined />}
+                              onClick={handleRetryWireframeGeneration}
+                              loading={wireframeLoading}
+                              style={{
+                                ...buttonStyles,
+                                backgroundColor: 'transparent',
+                                color: isDarkMode ? '#fff' : '#000',
+                                borderColor: '#f5222d'
+                              }}
+                            >
+                              Retry Wireframes
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     )}
                   </div>
-                ) : (
+                )}
+
+                {/* Show placeholder/error only if no screens and not loading */}
+                {wireframeScreens.length === 0 && !wireframeLoading && (
                   <div>
                     <div style={{
                       textAlign: 'center',
@@ -1005,7 +1004,7 @@ const DocumentsPage = () => {
                             type="default"
                             size="large"
                             icon={<ReloadOutlined />}
-                            onClick={handleGenerateWireframe}
+                            onClick={handleRetryWireframeGeneration}
                             loading={wireframeLoading}
                             style={{ ...buttonStyles, backgroundColor: 'transparent', color: isDarkMode ? '#fff' : '#000' }}
                           >
