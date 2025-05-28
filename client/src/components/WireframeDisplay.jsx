@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState,useEffect } from 'react';
+import { fetchUnsplashImage } from './unsplash'; // adjust path as needed
+
 import { 
   Typography, 
   Button, 
@@ -170,7 +172,16 @@ const MobileWireframeParser = ({ wireframeData, isDarkMode = false }) => {
           </Button>
         );
 
-      case 'Card':
+      case 'Card':{
+        console.log("card",designProperties)
+
+         const items = designProperties.items || [];
+          const firstItem = items[0] || {};
+          const image = firstItem.image;
+          if (image) {  
+            console.log('Found image in Card item:', image);
+          }
+
         return (
           <Card
             key={component.id || index}
@@ -215,44 +226,70 @@ const MobileWireframeParser = ({ wireframeData, isDarkMode = false }) => {
             </div>
           </Card>
         );
+      }
 
-      case 'Carousel':
-        return (
-          <Carousel
-            key={component.id || index}
-            autoplay={designProperties.autoplay}
-            dots={designProperties.dots}
-            style={{
-              ...baseStyle,
-              borderRadius: designProperties.borderRadius || '8px',
-              overflow: 'hidden'
-            }}
-          >
-            {dataProperties.items?.map((item, idx) => (
-              <div key={idx}>
-                <div style={{
-                  height: designProperties.height || '200px',
-                  background: `linear-gradient(135deg, ${theme.primary || '#1890ff'}, ${theme.secondary || '#52c41a'})`,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#fff',
-                  padding: '20px',
-                  textAlign: 'center'
-                }}>
-                  <div>
-                    <Title level={4} style={{ color: '#fff', margin: '0 0 8px 0' }}>
-                      {item.title}
-                    </Title>
-                    <Text style={{ color: '#fff', fontSize: '14px' }}>
-                      {item.description}
-                    </Text>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </Carousel>
-        );
+case 'Carousel':
+  const [imagesLoaded, setImagesLoaded] = useState(false);
+  const [carouselItems, setCarouselItems] = useState([]);
+
+  useEffect(() => {
+    const loadImages = async () => {
+      const updatedItems = await Promise.all(
+        dataProperties.items.map(async (item) => {
+          const unsplashUrl = await fetchUnsplashImage(item.title);
+          return {
+            ...item,
+            image: unsplashUrl
+          };
+        })
+      );
+      setCarouselItems(updatedItems);
+      setImagesLoaded(true);
+    };
+
+    loadImages();
+  }, [dataProperties.items]);
+
+  if (!imagesLoaded) return <div>Loading carousel...</div>;
+
+  return (
+    <Carousel
+      key={component.id || index}
+      autoplay={designProperties.autoplay}
+      dots={designProperties.dots}
+      style={{
+        ...baseStyle,
+        borderRadius: designProperties.borderRadius || '8px',
+        overflow: 'hidden'
+      }}
+    >
+      {carouselItems.map((item, idx) => (
+        <div key={idx}>
+          <div style={{
+            height: designProperties.height || '200px',
+            backgroundImage: `url(${item.image})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#fff',
+            padding: '20px',
+            textAlign: 'center'
+          }}>
+            <div style={{ backgroundColor: 'rgba(0,0,0,0.4)', padding: '10px', borderRadius: '8px' }}>
+              <Title level={4} style={{ color: '#fff', margin: '0 0 8px 0' }}>
+                {item.title}
+              </Title>
+              <Text style={{ color: '#fff', fontSize: '14px' }}>
+                {item.description}
+              </Text>
+            </div>
+          </div>
+        </div>
+      ))}
+    </Carousel>
+  );
 
       case 'Input':
         return (
