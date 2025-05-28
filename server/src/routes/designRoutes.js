@@ -7,7 +7,7 @@ const router = express.Router();
 router.post('/process', authenticate, processDescription);
 router.post('/construct-description', authenticate, constructBetterDescription);
 router.post('/generate-wireframe', authenticate, generateWireframe);
-router.post('/generate-pages', authenticate, generatePages); // process flows
+router.post('/generate-pages', authenticate, generatePages); 
 
 router.post('/answers', authenticate, saveAnswers);
 

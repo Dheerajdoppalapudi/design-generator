@@ -761,11 +761,12 @@ export { COMPONENT_SCHEMAS, DEFAULT_THEME, VALID_COMPONENT_TYPES, VALID_ICONS };
 
 export const generateWireframe = async (req, res) => {
   try {
-    const { description, workflow } = req.body;
+    const { description, workflow, screenIndex } = req.body;
+    console.log("SCREEN INDEX: ", screenIndex)
 
     const improvedDescription = description;
-    console.log("Workflow: ", workflow[0])
-    const wireframeJson = await generateWireframeJson(improvedDescription, workflow, workflow[0]);
+    // console.log("Workflow: ", workflow[0])
+    const wireframeJson = await generateWireframeJson(improvedDescription, workflow, workflow[screenIndex]);
 
     console.log("wireframeJsonL ",wireframeJson)
 
