@@ -3,7 +3,7 @@ import React, { useContext, useState } from 'react';
 import { Typography, Space, message, Spin, Button, Progress } from 'antd';
 import { ThemeContext } from '../context/ThemeContext';
 import { AuthContext } from '../context/AuthContext';
-import { FileTextOutlined, LoadingOutlined, AppstoreOutlined, ReloadOutlined, CodeOutlined, ManOutlined } from '@ant-design/icons';
+import { FileTextOutlined, LoadingOutlined, AppstoreOutlined, ReloadOutlined, CodeOutlined, ManOutlined, CheckOutlined } from '@ant-design/icons';
 import DescriptionInput from '../components/DescriptionInput';
 import QuestionsFlow from '../components/QuestionsFlow';
 import ResultsView from '../components/ResultsView';
@@ -11,6 +11,8 @@ import WorkflowDisplay from '../components/WorkflowDisplay';
 import WireframeDisplay from '../components/WireframeDisplay';
 import HTMLPagesDisplay from '../components/HTMLPagesDisplay';
 import FigmaExportButton from '../components/FigmaExportButton';
+import { EnhancedWireframeDisplay } from '../components/wireframe/EnhancedWireframeDisplay';
+
 import { apiRequest } from '../api/apiEndpoints';
 
 const { Title, Text, Paragraph } = Typography;
@@ -34,6 +36,9 @@ const DocumentsPage = () => {
   const [wireframeGenerationComplete, setWireframeGenerationComplete] = useState(false);
   const [isWaitingBetweenRequests, setIsWaitingBetweenRequests] = useState(false);
   const [waitingCountdown, setWaitingCountdown] = useState(0);
+  const [wireframeData, setWireframeData] = useState(null); // For single wireframe
+  const [canvasComponents, setCanvasComponents] = useState([]);
+  const [wireframeDataByScreen, setWireframeDataByScreen] = useState({}); 
 
   const [htmlPagesData, setHtmlPagesData] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -44,7 +49,7 @@ const DocumentsPage = () => {
   const [wireframeError, setWireframeError] = useState('');
   const [htmlPagesError, setHtmlPagesError] = useState('');
   const [loadingMsgIndex, setLoadingMsgIndex] = useState(0);
-
+  const isMultiScreen = wireframeScreens.length > 0;
   // Move loading messages outside useEffect to avoid dependency issues
   const loadingMessages = React.useMemo(() => [
     "Generating workflow based on your requirements...",
@@ -378,19 +383,87 @@ const DocumentsPage = () => {
 
       console.log(`Starting generation of wireframe screen ${screenIndex + 1}/${totalScreensCount}`);
 
-      const response = await apiRequest(
-        'http://localhost:8000/api/designs/generate-wireframe',
-        'POST',
-        {
-          description: improvedDescription,
-          workflow: workflowData,
-          screenIndex: screenIndex
+      // For demo purposes, using mock data. Replace with your actual API call:
+      const mockWireframeData = {
+        "app": {
+          "name": "Drone Booking App",
+          "theme": {
+            "primary": "#1890ff",
+            "secondary": "#52c41a",
+            "background": "#f5f5f5",
+            "surface": "#ffffff",
+            "text": "#262626",
+            "border": "#d9d9d9"
+          },
+          "nav": {
+            "type": "tabs",
+            "items": [
+              { "name": "Home", "icon": "home", "screen": "dashboard" },
+              { "name": "Book", "icon": "calendar", "screen": "booking" },
+              { "name": "History", "icon": "history", "screen": "history" },
+              { "name": "Profile", "icon": "user", "screen": "profile" }
+            ]
+          }
         },
-        user?.token
-      );
+        "screens": [
+          {
+            "name": `screen-${screenIndex}`,
+            "title": `Screen ${screenIndex + 1}`,
+            "components": [
+              {
+                "id": `header-${screenIndex}`,
+                "type": "Header",
+                "dataProperties": {
+                  "title": `Screen ${screenIndex + 1} Title`,
+                  "subtitle": "Subtitle here"
+                },
+                "designProperties": {
+                  "backgroundColor": "#1890ff",
+                  "textColor": "#ffffff",
+                  "alignment": "center",
+                  "hasBack": screenIndex > 0,
+                  "hasMenu": true
+                }
+              },
+              {
+                "id": `button-${screenIndex}`,
+                "type": "Button",
+                "dataProperties": {
+                  "text": "Primary Action",
+                  "icon": "plus"
+                },
+                "designProperties": {
+                  "variant": "solid",
+                  "full": true
+                }
+              },
+              {
+                "id": `card-${screenIndex}`,
+                "type": "Card",
+                "dataProperties": {
+                  "title": "Card Title",
+                  "description": "This is a sample card component",
+                  "action": "navigate"
+                },
+                "designProperties": {
+                  "elevation": 2,
+                  "hoverable": true
+                }
+              }
+            ]
+          }
+        ]
+      };
+
+      const response = { success: true, wireframe: mockWireframeData };
 
       if (response.success) {
-        // Add the new wireframe screen to the array immediately - REAL-TIME DISPLAY
+        // For single screen, set wireframeData
+        if (totalScreensCount === 1) {
+          setWireframeData(response.wireframe);
+        }
+
+        // Add to screens array for multi-screen
         setWireframeScreens(prev => {
           const newScreens = [...prev, response.wireframe];
           console.log(`✅ Wireframe screen ${screenIndex + 1} generated and displayed! Total screens: ${newScreens.length}/${totalScreensCount}`);
@@ -398,40 +471,36 @@ const DocumentsPage = () => {
           return newScreens;
         });
 
-        // Check if we need to generate more screens
+        // Continue with next screen logic...
         const nextScreenIndex = screenIndex + 1;
         if (nextScreenIndex < totalScreensCount) {
-          // Start 15-second countdown before next request
           console.log(`Waiting 15 seconds before generating screen ${nextScreenIndex + 1}...`);
           setIsWaitingBetweenRequests(true);
           setWaitingCountdown(15);
 
-          // Use setTimeout instead of manual countdown for more reliable timing
           setTimeout(async () => {
             setIsWaitingBetweenRequests(false);
             await generateNextWireframeScreen(nextScreenIndex);
           }, 15000);
-
         } else {
-          // All screens generated
           setWireframeGenerationComplete(true);
           setWireframeLoading(false);
           setIsWaitingBetweenRequests(false);
           console.log(`✅ All ${totalScreensCount} wireframe screens generated successfully!`);
           message.success(`All ${totalScreensCount} wireframe screens generated successfully!`);
         }
+
+        return response.wireframe;
       } else {
-        setWireframeError(response.error || `Failed to generate wireframe screen ${screenIndex + 1}`);
-        setWireframeLoading(false);
-        setIsWaitingBetweenRequests(false);
-        message.error(`Failed to generate screen ${screenIndex + 1}`);
+        throw new Error(response.error || 'Failed to generate wireframe');
       }
     } catch (error) {
       setWireframeError(`Failed to generate wireframe screen ${screenIndex + 1}`);
       setWireframeLoading(false);
       setIsWaitingBetweenRequests(false);
-      message.error(`Error generating screen ${screenIndex + 1}`);
+      message.error(`Failed to generate screen ${screenIndex + 1}`);
       console.error('Error generating wireframe screen:', error);
+      throw error;
     }
   }, [apiRequest, improvedDescription, workflowData, user?.token, totalScreensCount]);
 
@@ -825,7 +894,7 @@ const DocumentsPage = () => {
                 fontWeight: '500',
               }}
             >
-              Step 5: UI Wireframe
+              Step 5: Interactive UI Wireframe Canvas
             </Title>
 
             {/* Show loading only if no screens are generated yet */}
@@ -851,121 +920,40 @@ const DocumentsPage = () => {
               </div>
             ) : (
               <>
-                {/* Show wireframes immediately as they are generated */}
-                {wireframeScreens.length > 0 && (
-                  <div>
-                    <WireframeDisplay
-                      wireframeScreens={wireframeScreens}
-                      isDarkMode={isDarkMode}
-                      isMultiScreen={true}
-                      totalScreens={totalScreensCount}
-                      currentGeneratingIndex={currentScreenIndex}
-                      isLoading={wireframeLoading}
-                      isWaitingBetweenRequests={isWaitingBetweenRequests}
-                      waitingCountdown={waitingCountdown}
-                    />
-
-                    {currentStep === 'wireframe' && (
-                      <div style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        marginTop: '30px',
-                        padding: '20px',
-                        background: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
-                        borderRadius: '8px',
-                        border: isDarkMode ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgba(0,0,0,0.05)'
-                      }}>
-                        <FigmaExportButton
-                          designData={getCurrentDesignData()}
-                          isDarkMode={isDarkMode}
-                          size="small"
-                          currentStep="wireframe"
-                          placement="corner"
-                        />
-
-                        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                          {/* Generation status indicator */}
-                          {wireframeLoading && !wireframeGenerationComplete && (
-                            <div style={{
-                              padding: '8px 16px',
-                              background: isDarkMode ? 'rgba(24, 144, 255, 0.1)' : 'rgba(24, 144, 255, 0.1)',
-                              borderRadius: '6px',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '8px',
-                              border: '1px solid #1890ff'
-                            }}>
-                              <LoadingOutlined style={{ color: '#1890ff' }} />
-                              <Text style={{ color: '#1890ff', fontSize: '14px', fontWeight: '500' }}>
-                                {isWaitingBetweenRequests
-                                  ? `Next screen in ${waitingCountdown}s`
-                                  : `Generating screen ${currentScreenIndex + 1}...`
-                                }
-                              </Text>
-                            </div>
-                          )}
-
-                          {/* Completion indicator */}
-                          {wireframeGenerationComplete && (
-                            <div style={{
-                              padding: '8px 16px',
-                              background: isDarkMode ? 'rgba(82, 196, 26, 0.1)' : 'rgba(82, 196, 26, 0.1)',
-                              borderRadius: '6px',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '8px',
-                              border: '1px solid #52c41a'
-                            }}>
-                              <CheckOutlined style={{ color: '#52c41a' }} />
-                              <Text style={{ color: '#52c41a', fontSize: '14px', fontWeight: '500' }}>
-                                All wireframes generated!
-                              </Text>
-                            </div>
-                          )}
-
-                          {/* Generate HTML Pages Button - Always show, enable when wireframes complete */}
-                          <Button
-                            type="primary"
-                            size="large"
-                            icon={<CodeOutlined />}
-                            onClick={handleGenerateHtmlPages}
-                            loading={htmlPagesLoading}
-                            disabled={!wireframeGenerationComplete && wireframeLoading}
-                            style={{
-                              ...buttonStyles,
-                              opacity: (!wireframeGenerationComplete && wireframeLoading) ? 0.6 : 1
-                            }}
-                          >
-                            Generate HTML Pages
-                          </Button>
-
-                          {/* Retry wireframe button if there's an error */}
-                          {wireframeError && (
-                            <Button
-                              type="default"
-                              size="large"
-                              icon={<ReloadOutlined />}
-                              onClick={handleRetryWireframeGeneration}
-                              loading={wireframeLoading}
-                              style={{
-                                ...buttonStyles,
-                                backgroundColor: 'transparent',
-                                color: isDarkMode ? '#fff' : '#000',
-                                borderColor: '#f5222d'
-                              }}
-                            >
-                              Retry Wireframes
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Show placeholder/error only if no screens and not loading */}
-                {wireframeScreens.length === 0 && !wireframeLoading && (
+                {/* Enhanced Wireframe Display with Canvas */}
+                {wireframeScreens.length > 0 || wireframeData ? (
+                  <EnhancedWireframeDisplay
+                    wireframeData={!isMultiScreen ? wireframeData : null}
+                    wireframeScreens={wireframeScreens}
+                    isDarkMode={isDarkMode}
+                    isMultiScreen={wireframeScreens.length > 0}
+                    totalScreens={totalScreensCount}
+                    currentGeneratingIndex={currentScreenIndex}
+                    isLoading={wireframeLoading}
+                    isWaitingBetweenRequests={isWaitingBetweenRequests}
+                    waitingCountdown={waitingCountdown}
+                    onComponentUpdate={(componentId, updates) => {
+                      // Handle component updates
+                      console.log('Component updated:', componentId, updates);
+                      // You can implement actual update logic here
+                    }}
+                    onComponentDelete={(componentId) => {
+                      // Handle component deletion
+                      console.log('Component deleted:', componentId);
+                      // You can implement actual deletion logic here
+                    }}
+                    onComponentAdd={(newComponent) => {
+                      // Handle new component addition
+                      console.log('Component added:', newComponent);
+                      // You can implement actual addition logic here
+                    }}
+                    onGenerateNewScreen={async (screenIndex) => {
+                      // This function should trigger the generation of a new screen
+                      return await generateNextWireframeScreen(screenIndex);
+                    }}
+                  />
+                ) : (
+                  /* Placeholder when no wireframes */
                   <div>
                     <div style={{
                       textAlign: 'center',
@@ -976,11 +964,21 @@ const DocumentsPage = () => {
                       border: isDarkMode ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgba(0,0,0,0.03)',
                     }}>
                       {wireframeError ? (
-                        <Text style={{ color: '#f5222d', fontSize: 16 }}>
-                          {wireframeError}
-                        </Text>
+                        <div>
+                          <div style={{ fontSize: '48px', marginBottom: '16px', opacity: 0.5 }}>⚠️</div>
+                          <Text style={{ color: '#f5222d', fontSize: 16 }}>
+                            {wireframeError}
+                          </Text>
+                        </div>
                       ) : (
-                        <Text>No wireframe data available. You can skip this step and generate HTML pages directly.</Text>
+                        <div>
+                          <div style={{ fontSize: '48px', marginBottom: '16px', opacity: 0.5 }}>📱</div>
+                          <Text>No wireframe data available.</Text>
+                          <br />
+                          <Text style={{ fontSize: '14px', opacity: 0.7 }}>
+                            You can skip this step and generate HTML pages directly, or try generating wireframes again.
+                          </Text>
+                        </div>
                       )}
                     </div>
 
@@ -1022,6 +1020,104 @@ const DocumentsPage = () => {
                           Generate HTML Pages
                         </Button>
                       </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Action buttons for canvas mode */}
+                {(wireframeScreens.length > 0 || wireframeData) && currentStep === 'wireframe' && (
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginTop: '30px',
+                    padding: '20px',
+                    background: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
+                    borderRadius: '8px',
+                    border: isDarkMode ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgba(0,0,0,0.05)'
+                  }}>
+                    <FigmaExportButton
+                      designData={getCurrentDesignData()}
+                      isDarkMode={isDarkMode}
+                      size="small"
+                      currentStep="wireframe"
+                      placement="corner"
+                    />
+
+                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                      {/* Generation status indicator */}
+                      {wireframeLoading && !wireframeGenerationComplete && (
+                        <div style={{
+                          padding: '8px 16px',
+                          background: isDarkMode ? 'rgba(24, 144, 255, 0.1)' : 'rgba(24, 144, 255, 0.1)',
+                          borderRadius: '6px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          border: '1px solid #1890ff'
+                        }}>
+                          <LoadingOutlined style={{ color: '#1890ff' }} />
+                          <Text style={{ color: '#1890ff', fontSize: '14px', fontWeight: '500' }}>
+                            {isWaitingBetweenRequests
+                              ? `Next screen in ${waitingCountdown}s`
+                              : `Generating screen ${currentScreenIndex + 1}...`
+                            }
+                          </Text>
+                        </div>
+                      )}
+
+                      {/* Completion indicator */}
+                      {wireframeGenerationComplete && (
+                        <div style={{
+                          padding: '8px 16px',
+                          background: isDarkMode ? 'rgba(82, 196, 26, 0.1)' : 'rgba(82, 196, 26, 0.1)',
+                          borderRadius: '6px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          border: '1px solid #52c41a'
+                        }}>
+                          <CheckOutlined style={{ color: '#52c41a' }} />
+                          <Text style={{ color: '#52c41a', fontSize: '14px', fontWeight: '500' }}>
+                            All wireframes generated!
+                          </Text>
+                        </div>
+                      )}
+
+                      {/* Generate HTML Pages Button */}
+                      <Button
+                        type="primary"
+                        size="large"
+                        icon={<CodeOutlined />}
+                        onClick={handleGenerateHtmlPages}
+                        loading={htmlPagesLoading}
+                        disabled={!wireframeGenerationComplete && wireframeLoading}
+                        style={{
+                          ...buttonStyles,
+                          opacity: (!wireframeGenerationComplete && wireframeLoading) ? 0.6 : 1
+                        }}
+                      >
+                        Generate HTML Pages
+                      </Button>
+
+                      {/* Retry wireframe button if there's an error */}
+                      {wireframeError && (
+                        <Button
+                          type="default"
+                          size="large"
+                          icon={<ReloadOutlined />}
+                          onClick={handleRetryWireframeGeneration}
+                          loading={wireframeLoading}
+                          style={{
+                            ...buttonStyles,
+                            backgroundColor: 'transparent',
+                            color: isDarkMode ? '#fff' : '#000',
+                            borderColor: '#f5222d'
+                          }}
+                        >
+                          Retry Wireframes
+                        </Button>
+                      )}
                     </div>
                   </div>
                 )}

@@ -2,11 +2,8 @@ import https from 'https';
 import fs from 'fs';
 import path from 'path';
 
-// Groq API configuration
-const GROQ_API_KEY = process.env.GROQ_API_KEY || "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";
+const GROQ_API_KEY = process.env.GROQ_API_KEY || "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";
 
-// Function to make API request to Groq
-// Simplified function to make API request to Groq
 export async function makeGroqRequest(prompt) {
     const payload = {
         messages: [{ role: "user", content: prompt }],
@@ -113,15 +110,6 @@ function saveFilesToDisk(files, baseDir = './generated_websites') {
         projectDir,
         savedFiles
     };
-}
-
-// Helper function to convert workflow to readable format
-function formatWorkflowForPrompt(workflow) {
-    if (!workflow || !Array.isArray(workflow)) return '';
-    
-    return workflow.map(screen => 
-        `- ${screen.title}: ${screen.description} (connects to: ${screen.nextScreens.join(', ') || 'none'})`
-    ).join('\n');
 }
 
 // Main controller function for generating HTML pages

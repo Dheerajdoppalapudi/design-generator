@@ -6,3 +6,7 @@ npm run test:coverage -> run tests and coverage report
 
 npx prisma migrate dev --name init
 NODE_ENV=development npx prisma migrate dev --name init
+
+
+
+create a drone application, where users can come and books drones for spraying they have to select the date and slot and proceed to booking, also show the user his/her booking history and app need to have a homepage
