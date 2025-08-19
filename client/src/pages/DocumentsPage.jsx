@@ -3,7 +3,7 @@ import React, { useContext, useState } from 'react';
 import { Typography, Space, message, Spin, Button, Progress } from 'antd';
 import { ThemeContext } from '../context/ThemeContext';
 import { AuthContext } from '../context/AuthContext';
-import { FileTextOutlined, LoadingOutlined, AppstoreOutlined, ReloadOutlined, CodeOutlined, ManOutlined, CheckOutlined } from '@ant-design/icons';
+import { FileTextOutlined, LoadingOutlined, AppstoreOutlined, ReloadOutlined, CodeOutlined, ManOutlined, EditOutlined } from '@ant-design/icons';
 import DescriptionInput from '../components/DescriptionInput';
 import QuestionsFlow from '../components/QuestionsFlow';
 import ResultsView from '../components/ResultsView';
@@ -11,8 +11,7 @@ import WorkflowDisplay from '../components/WorkflowDisplay';
 import WireframeDisplay from '../components/WireframeDisplay';
 import HTMLPagesDisplay from '../components/HTMLPagesDisplay';
 import FigmaExportButton from '../components/FigmaExportButton';
-import { EnhancedWireframeDisplay } from '../components/wireframe/EnhancedWireframeDisplay';
-
+import EnhancedWireframeDisplay from '../components/WireframeDisplay/EnhancedWireframeDisplay';
 import { apiRequest } from '../api/apiEndpoints';
 
 const { Title, Text, Paragraph } = Typography;
@@ -36,9 +35,6 @@ const DocumentsPage = () => {
   const [wireframeGenerationComplete, setWireframeGenerationComplete] = useState(false);
   const [isWaitingBetweenRequests, setIsWaitingBetweenRequests] = useState(false);
   const [waitingCountdown, setWaitingCountdown] = useState(0);
-  const [wireframeData, setWireframeData] = useState(null); // For single wireframe
-  const [canvasComponents, setCanvasComponents] = useState([]);
-  const [wireframeDataByScreen, setWireframeDataByScreen] = useState({}); 
 
   const [htmlPagesData, setHtmlPagesData] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -49,7 +45,8 @@ const DocumentsPage = () => {
   const [wireframeError, setWireframeError] = useState('');
   const [htmlPagesError, setHtmlPagesError] = useState('');
   const [loadingMsgIndex, setLoadingMsgIndex] = useState(0);
-  const isMultiScreen = wireframeScreens.length > 0;
+  const [isEditMode, setIsEditMode] = useState(false);
+
   // Move loading messages outside useEffect to avoid dependency issues
   const loadingMessages = React.useMemo(() => [
     "Generating workflow based on your requirements...",
@@ -209,7 +206,6 @@ const DocumentsPage = () => {
         ]
       }
 
-
       if (response.success) {
         setQuestions(response.questions || []);
         setCurrentStep('questions');
@@ -236,7 +232,7 @@ const DocumentsPage = () => {
       //   user?.token
       // );
 
-      const response = {
+       const response = {
         "message": "Constructed better description successfully",
         "success": true,
         "improvedDescription": "Here is the improved design description:\n\n**Design Description**\n\n**Application:** Drone Booking Application for Spraying Services\n\n**Overview:** The application will allow users to book drones for spraying services on a specific date and time slot. The app will have a homepage, booking functionality, and user account management.\n\n**Key Features:**\n\n1. **Homepage:** A visually appealing page that showcases available drone options, upcoming events, or promotions.\n2. **Booking Process:**\n\t* Users can browse available drones and select their preferred date and slot on a single form with all required fields (date, time slot, drone type).\n\t* Upon submission, the app will confirm the booking details and allow users to proceed with payment processing.\n3. **User Account Management:** Users can log in to access their account information and view their booking history.\n4. **Booking History:**\n\t* A dedicated section within the user account where bookings are listed with details such as date, slot, and drone type.\n\n**Design Requirements:**\n\n1. Mobile App design for both iOS and Android platforms\n2. Standard color scheme and font suggestions will be explored to ensure a professional look and feel\n\n**User Authentication:** User authentication is somewhat important, allowing users to browse booking options without logging in but requiring login to proceed with booking and access account information.\n\nThis improved description includes a more detailed overview of the application's features and requirements, making it easier for the design team to create an effective and user-friendly design."
@@ -383,87 +379,19 @@ const DocumentsPage = () => {
 
       console.log(`Starting generation of wireframe screen ${screenIndex + 1}/${totalScreensCount}`);
 
-      // For demo purposes, using mock data. Replace with your actual API call:
-      const mockWireframeData = {
-        "app": {
-          "name": "Drone Booking App",
-          "theme": {
-            "primary": "#1890ff",
-            "secondary": "#52c41a",
-            "background": "#f5f5f5",
-            "surface": "#ffffff",
-            "text": "#262626",
-            "border": "#d9d9d9"
-          },
-          "nav": {
-            "type": "tabs",
-            "items": [
-              { "name": "Home", "icon": "home", "screen": "dashboard" },
-              { "name": "Book", "icon": "calendar", "screen": "booking" },
-              { "name": "History", "icon": "history", "screen": "history" },
-              { "name": "Profile", "icon": "user", "screen": "profile" }
-            ]
-          }
+      const response = await apiRequest(
+        'http://localhost:8000/api/designs/generate-wireframe',
+        'POST',
+        {
+          description: improvedDescription,
+          workflow: workflowData,
+          screenIndex: screenIndex
         },
-        "screens": [
-          {
-            "name": `screen-${screenIndex}`,
-            "title": `Screen ${screenIndex + 1}`,
-            "components": [
-              {
-                "id": `header-${screenIndex}`,
-                "type": "Header",
-                "dataProperties": {
-                  "title": `Screen ${screenIndex + 1} Title`,
-                  "subtitle": "Subtitle here"
-                },
-                "designProperties": {
-                  "backgroundColor": "#1890ff",
-                  "textColor": "#ffffff",
-                  "alignment": "center",
-                  "hasBack": screenIndex > 0,
-                  "hasMenu": true
-                }
-              },
-              {
-                "id": `button-${screenIndex}`,
-                "type": "Button",
-                "dataProperties": {
-                  "text": "Primary Action",
-                  "icon": "plus"
-                },
-                "designProperties": {
-                  "variant": "solid",
-                  "full": true
-                }
-              },
-              {
-                "id": `card-${screenIndex}`,
-                "type": "Card",
-                "dataProperties": {
-                  "title": "Card Title",
-                  "description": "This is a sample card component",
-                  "action": "navigate"
-                },
-                "designProperties": {
-                  "elevation": 2,
-                  "hoverable": true
-                }
-              }
-            ]
-          }
-        ]
-      };
-
-      const response = { success: true, wireframe: mockWireframeData };
+        user?.token
+      );
 
       if (response.success) {
-        // For single screen, set wireframeData
-        if (totalScreensCount === 1) {
-          setWireframeData(response.wireframe);
-        }
-
-        // Add to screens array for multi-screen
+        // Add the new wireframe screen to the array immediately - REAL-TIME DISPLAY
         setWireframeScreens(prev => {
           const newScreens = [...prev, response.wireframe];
           console.log(`✅ Wireframe screen ${screenIndex + 1} generated and displayed! Total screens: ${newScreens.length}/${totalScreensCount}`);
@@ -471,38 +399,87 @@ const DocumentsPage = () => {
           return newScreens;
         });
 
-        // Continue with next screen logic...
+        // Check if we need to generate more screens
         const nextScreenIndex = screenIndex + 1;
         if (nextScreenIndex < totalScreensCount) {
+          // Start 15-second countdown before next request
           console.log(`Waiting 15 seconds before generating screen ${nextScreenIndex + 1}...`);
           setIsWaitingBetweenRequests(true);
           setWaitingCountdown(15);
 
+          // Use setTimeout instead of manual countdown for more reliable timing
           setTimeout(async () => {
             setIsWaitingBetweenRequests(false);
             await generateNextWireframeScreen(nextScreenIndex);
           }, 15000);
+
         } else {
+          // All screens generated
           setWireframeGenerationComplete(true);
           setWireframeLoading(false);
           setIsWaitingBetweenRequests(false);
           console.log(`✅ All ${totalScreensCount} wireframe screens generated successfully!`);
           message.success(`All ${totalScreensCount} wireframe screens generated successfully!`);
         }
-
-        return response.wireframe;
       } else {
-        throw new Error(response.error || 'Failed to generate wireframe');
+        setWireframeError(response.error || `Failed to generate wireframe screen ${screenIndex + 1}`);
+        setWireframeLoading(false);
+        setIsWaitingBetweenRequests(false);
+        message.error(`Failed to generate screen ${screenIndex + 1}`);
       }
     } catch (error) {
       setWireframeError(`Failed to generate wireframe screen ${screenIndex + 1}`);
       setWireframeLoading(false);
       setIsWaitingBetweenRequests(false);
-      message.error(`Failed to generate screen ${screenIndex + 1}`);
+      message.error(`Error generating screen ${screenIndex + 1}`);
       console.error('Error generating wireframe screen:', error);
-      throw error;
     }
   }, [apiRequest, improvedDescription, workflowData, user?.token, totalScreensCount]);
+
+  // Add these two handlers here
+  const handleWireframeUpdate = React.useCallback((updatedWireframes, screenIndex = null) => {
+    if (Array.isArray(updatedWireframes)) {
+      // Multi-screen update
+      setWireframeScreens(updatedWireframes);
+    } else {
+      // Single screen update
+      if (screenIndex !== null) {
+        setWireframeScreens(prev => {
+          const newScreens = [...prev];
+          newScreens[screenIndex] = updatedWireframes;
+          return newScreens;
+        });
+      } else {
+        // Update first screen if no index specified
+        setWireframeScreens(prev => {
+          if (prev.length === 0) return [updatedWireframes];
+          const newScreens = [...prev];
+          newScreens[0] = updatedWireframes;
+          return newScreens;
+        });
+      }
+    }
+  }, []);
+
+  const handleWireframeExport = React.useCallback((wireframe) => {
+    const dataStr = JSON.stringify({
+      wireframe,
+      metadata: {
+        exportedAt: new Date().toISOString(),
+        appName: wireframe?.app?.name || 'Mobile App',
+        totalScreens: wireframeScreens.length,
+        workflow: workflowData
+      }
+    }, null, 2);
+
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${wireframe?.app?.name || 'mobile-app'}-wireframe.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }, [wireframeScreens, workflowData]);
 
   // Updated wireframe generation with 15-second delays
   const handleGenerateWireframe = React.useCallback(async () => {
@@ -591,6 +568,23 @@ const DocumentsPage = () => {
     description: description,
     htmlFiles: htmlPagesData
   }), [workflowData, wireframeScreens, improvedDescription, answers, description, htmlPagesData]);
+
+  if (isEditMode && wireframeScreens.length > 0) {
+    return (
+      <EnhancedWireframeDisplay
+        wireframeScreens={wireframeScreens}
+        isDarkMode={isDarkMode}
+        isMultiScreen={true}
+        totalScreens={totalScreensCount}
+        currentGeneratingIndex={currentScreenIndex}
+        isLoading={wireframeLoading}
+        isWaitingBetweenRequests={isWaitingBetweenRequests}
+        waitingCountdown={waitingCountdown}
+        onWireframeUpdate={handleWireframeUpdate}
+        onExport={handleWireframeExport}
+      />
+    );
+  }
 
   return (
     <div style={{
@@ -831,413 +825,403 @@ const DocumentsPage = () => {
                         marginTop: '30px',
                         marginBottom: '16px'
                       }}>
-                        <FigmaExportButton
-                          designData={getCurrentDesignData()}
+                        {/* <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}> */}
+                          <Button
+                            type="default"
+                            size="large"
+                            icon={<EditOutlined />}
+                            onClick={() => setIsEditMode(true)}
+                            style={{
+                              ...buttonStyles,
+                              backgroundColor: '#52c41a',
+                              borderColor: '#52c41a',
+                              color: '#fff'
+                            }}
+                          >
+                            Open Editor
+                          </Button>
+                          <FigmaExportButton
+                            designData={getCurrentDesignData()}
+                            isDarkMode={isDarkMode}
+                            size="small"
+                            currentStep="workflow"
+                            placement="corner"
+                          />
+
+                          <div style={{ display: 'flex', gap: '12px' }}>
+                            <Button
+                              type="default"
+                              size="large"
+                              icon={<AppstoreOutlined />}
+                              onClick={handleGenerateWireframe}
+                              loading={wireframeLoading}
+                              style={{ ...buttonStyles, backgroundColor: 'transparent', color: isDarkMode ? '#fff' : '#000' }}
+                            >
+                              Generate UI Wireframe
+                            </Button>
+                            <Button
+                              type="primary"
+                              size="large"
+                              icon={<CodeOutlined />}
+                              onClick={handleGenerateHtmlPages}
+                              loading={htmlPagesLoading}
+                              style={buttonStyles}
+                            >
+                              Generate HTML Pages
+                            </Button>
+                          </div>
+                        </div>
+                    )}
+                      </div>
+                    ) : (
+                    <div style={{ textAlign: 'center', padding: '40px 0', color: isDarkMode ? '#fff' : '#333' }}>
+                      No workflow data available. Please try generating again.
+                    </div>
+                )}
+                  </>
+                )}
+
+                {errorMsg && (
+                  <div style={{ textAlign: 'center', marginTop: 16 }}>
+                    <Text style={{ color: '#f5222d', fontSize: 16 }}>
+                      {errorMsg}
+                    </Text>
+                  </div>
+                )}
+              </div>
+        )}
+
+            {/* Step 5: Wireframe */}
+            {(currentStep === 'wireframe' || currentStep === 'htmlpages') && (
+              <div style={{ marginBottom: currentStep !== 'wireframe' ? '40px' : '0' }}>
+                <Title
+                  level={4}
+                  style={{
+                    color: isDarkMode ? '#fff' : '#000',
+                    marginBottom: '16px',
+                    marginTop: '30px',
+                    fontWeight: '500',
+                  }}
+                >
+                  Step 5: UI Wireframe
+                </Title>
+
+                {/* Show loading only if no screens are generated yet */}
+                {wireframeLoading && wireframeScreens.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '60px 0' }}>
+                    <Spin indicator={spinIcon} />
+                    <Paragraph style={{
+                      marginTop: 24,
+                      color: isDarkMode ? '#fff' : '#333',
+                      fontSize: 18,
+                      fontWeight: 500,
+                    }}>
+                      {wireframeLoadingMessages[loadingMsgIndex]}
+                    </Paragraph>
+
+                    <div style={{ maxWidth: '400px', margin: '20px auto' }}>
+                      <Progress
+                        percent={0}
+                        format={() => `Starting wireframe generation...`}
+                        strokeColor={isDarkMode ? '#00d2ff' : '#0ea5e9'}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    {/* Show wireframes immediately as they are generated */}
+                    {wireframeScreens.length > 0 && (
+                      <div>
+                        <EnhancedWireframeDisplay
+                          wireframeScreens={wireframeScreens}
                           isDarkMode={isDarkMode}
-                          size="small"
-                          currentStep="workflow"
-                          placement="corner"
+                          isMultiScreen={true}
+                          totalScreens={totalScreensCount}
+                          currentGeneratingIndex={currentScreenIndex}
+                          isLoading={wireframeLoading}
+                          isWaitingBetweenRequests={isWaitingBetweenRequests}
+                          waitingCountdown={waitingCountdown}
+                          onWireframeUpdate={handleWireframeUpdate}
+                          onExport={handleWireframeExport}
                         />
 
-                        <div style={{ display: 'flex', gap: '12px' }}>
-                          <Button
-                            type="default"
-                            size="large"
-                            icon={<AppstoreOutlined />}
-                            onClick={handleGenerateWireframe}
-                            loading={wireframeLoading}
-                            style={{ ...buttonStyles, backgroundColor: 'transparent', color: isDarkMode ? '#fff' : '#000' }}
-                          >
-                            Generate UI Wireframe
-                          </Button>
-                          <Button
-                            type="primary"
-                            size="large"
-                            icon={<CodeOutlined />}
-                            onClick={handleGenerateHtmlPages}
-                            loading={htmlPagesLoading}
-                            style={buttonStyles}
-                          >
-                            Generate HTML Pages
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div style={{ textAlign: 'center', padding: '40px 0', color: isDarkMode ? '#fff' : '#333' }}>
-                    No workflow data available. Please try generating again.
-                  </div>
-                )}
-              </>
-            )}
+                        {currentStep === 'wireframe' && (
+                          <div style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            marginTop: '30px',
+                            padding: '20px',
+                            background: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
+                            borderRadius: '8px',
+                            border: isDarkMode ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgba(0,0,0,0.05)'
+                          }}>
+                            <FigmaExportButton
+                              designData={getCurrentDesignData()}
+                              isDarkMode={isDarkMode}
+                              size="small"
+                              currentStep="wireframe"
+                              placement="corner"
+                            />
 
-            {errorMsg && (
-              <div style={{ textAlign: 'center', marginTop: 16 }}>
-                <Text style={{ color: '#f5222d', fontSize: 16 }}>
-                  {errorMsg}
-                </Text>
-              </div>
-            )}
-          </div>
-        )}
+                            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                              {/* Generation status indicator */}
+                              {wireframeLoading && !wireframeGenerationComplete && (
+                                <div style={{
+                                  padding: '8px 16px',
+                                  background: isDarkMode ? 'rgba(24, 144, 255, 0.1)' : 'rgba(24, 144, 255, 0.1)',
+                                  borderRadius: '6px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '8px',
+                                  border: '1px solid #1890ff'
+                                }}>
+                                  <LoadingOutlined style={{ color: '#1890ff' }} />
+                                  <Text style={{ color: '#1890ff', fontSize: '14px', fontWeight: '500' }}>
+                                    {isWaitingBetweenRequests
+                                      ? `Next screen in ${waitingCountdown}s`
+                                      : `Generating screen ${currentScreenIndex + 1}...`
+                                    }
+                                  </Text>
+                                </div>
+                              )}
 
-        {/* Step 5: Wireframe */}
-        {(currentStep === 'wireframe' || currentStep === 'htmlpages') && (
-          <div style={{ marginBottom: currentStep !== 'wireframe' ? '40px' : '0' }}>
-            <Title
-              level={4}
-              style={{
-                color: isDarkMode ? '#fff' : '#000',
-                marginBottom: '16px',
-                marginTop: '30px',
-                fontWeight: '500',
-              }}
-            >
-              Step 5: Interactive UI Wireframe Canvas
-            </Title>
+                              {/* Completion indicator */}
+                              {wireframeGenerationComplete && (
+                                <div style={{
+                                  padding: '8px 16px',
+                                  background: isDarkMode ? 'rgba(82, 196, 26, 0.1)' : 'rgba(82, 196, 26, 0.1)',
+                                  borderRadius: '6px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '8px',
+                                  border: '1px solid #52c41a'
+                                }}>
+                                  <CheckOutlined style={{ color: '#52c41a' }} />
+                                  <Text style={{ color: '#52c41a', fontSize: '14px', fontWeight: '500' }}>
+                                    All wireframes generated!
+                                  </Text>
+                                </div>
+                              )}
 
-            {/* Show loading only if no screens are generated yet */}
-            {wireframeLoading && wireframeScreens.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '60px 0' }}>
-                <Spin indicator={spinIcon} />
-                <Paragraph style={{
-                  marginTop: 24,
-                  color: isDarkMode ? '#fff' : '#333',
-                  fontSize: 18,
-                  fontWeight: 500,
-                }}>
-                  {wireframeLoadingMessages[loadingMsgIndex]}
-                </Paragraph>
+                              {/* Generate HTML Pages Button - Always show, enable when wireframes complete */}
+                              <Button
+                                type="primary"
+                                size="large"
+                                icon={<CodeOutlined />}
+                                onClick={handleGenerateHtmlPages}
+                                loading={htmlPagesLoading}
+                                disabled={!wireframeGenerationComplete && wireframeLoading}
+                                style={{
+                                  ...buttonStyles,
+                                  opacity: (!wireframeGenerationComplete && wireframeLoading) ? 0.6 : 1
+                                }}
+                              >
+                                Generate HTML Pages
+                              </Button>
 
-                <div style={{ maxWidth: '400px', margin: '20px auto' }}>
-                  <Progress
-                    percent={0}
-                    format={() => `Starting wireframe generation...`}
-                    strokeColor={isDarkMode ? '#00d2ff' : '#0ea5e9'}
-                  />
-                </div>
-              </div>
-            ) : (
-              <>
-                {/* Enhanced Wireframe Display with Canvas */}
-                {wireframeScreens.length > 0 || wireframeData ? (
-                  <EnhancedWireframeDisplay
-                    wireframeData={!isMultiScreen ? wireframeData : null}
-                    wireframeScreens={wireframeScreens}
-                    isDarkMode={isDarkMode}
-                    isMultiScreen={wireframeScreens.length > 0}
-                    totalScreens={totalScreensCount}
-                    currentGeneratingIndex={currentScreenIndex}
-                    isLoading={wireframeLoading}
-                    isWaitingBetweenRequests={isWaitingBetweenRequests}
-                    waitingCountdown={waitingCountdown}
-                    onComponentUpdate={(componentId, updates) => {
-                      // Handle component updates
-                      console.log('Component updated:', componentId, updates);
-                      // You can implement actual update logic here
-                    }}
-                    onComponentDelete={(componentId) => {
-                      // Handle component deletion
-                      console.log('Component deleted:', componentId);
-                      // You can implement actual deletion logic here
-                    }}
-                    onComponentAdd={(newComponent) => {
-                      // Handle new component addition
-                      console.log('Component added:', newComponent);
-                      // You can implement actual addition logic here
-                    }}
-                    onGenerateNewScreen={async (screenIndex) => {
-                      // This function should trigger the generation of a new screen
-                      return await generateNextWireframeScreen(screenIndex);
-                    }}
-                  />
-                ) : (
-                  /* Placeholder when no wireframes */
-                  <div>
-                    <div style={{
-                      textAlign: 'center',
-                      padding: '40px 0',
-                      color: isDarkMode ? '#fff' : '#333',
-                      background: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.01)',
-                      borderRadius: '8px',
-                      border: isDarkMode ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgba(0,0,0,0.03)',
-                    }}>
-                      {wireframeError ? (
-                        <div>
-                          <div style={{ fontSize: '48px', marginBottom: '16px', opacity: 0.5 }}>⚠️</div>
-                          <Text style={{ color: '#f5222d', fontSize: 16 }}>
-                            {wireframeError}
-                          </Text>
-                        </div>
-                      ) : (
-                        <div>
-                          <div style={{ fontSize: '48px', marginBottom: '16px', opacity: 0.5 }}>📱</div>
-                          <Text>No wireframe data available.</Text>
-                          <br />
-                          <Text style={{ fontSize: '14px', opacity: 0.7 }}>
-                            You can skip this step and generate HTML pages directly, or try generating wireframes again.
-                          </Text>
-                        </div>
-                      )}
-                    </div>
-
-                    <div style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      marginTop: '20px'
-                    }}>
-                      <FigmaExportButton
-                        designData={getCurrentDesignData()}
-                        isDarkMode={isDarkMode}
-                        size="small"
-                        currentStep="wireframe"
-                        placement="corner"
-                      />
-
-                      <div style={{ display: 'flex', gap: '12px' }}>
-                        {wireframeError && (
-                          <Button
-                            type="default"
-                            size="large"
-                            icon={<ReloadOutlined />}
-                            onClick={handleRetryWireframeGeneration}
-                            loading={wireframeLoading}
-                            style={{ ...buttonStyles, backgroundColor: 'transparent', color: isDarkMode ? '#fff' : '#000' }}
-                          >
-                            Retry Generate Wireframe
-                          </Button>
+                              {/* Retry wireframe button if there's an error */}
+                              {wireframeError && (
+                                <Button
+                                  type="default"
+                                  size="large"
+                                  icon={<ReloadOutlined />}
+                                  onClick={handleRetryWireframeGeneration}
+                                  loading={wireframeLoading}
+                                  style={{
+                                    ...buttonStyles,
+                                    backgroundColor: 'transparent',
+                                    color: isDarkMode ? '#fff' : '#000',
+                                    borderColor: '#f5222d'
+                                  }}
+                                >
+                                  Retry Wireframes
+                                </Button>
+                              )}
+                            </div>
+                          </div>
                         )}
-                        <Button
-                          type="primary"
-                          size="large"
-                          icon={<CodeOutlined />}
-                          onClick={handleGenerateHtmlPages}
-                          loading={htmlPagesLoading}
-                          style={buttonStyles}
-                        >
-                          Generate HTML Pages
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Action buttons for canvas mode */}
-                {(wireframeScreens.length > 0 || wireframeData) && currentStep === 'wireframe' && (
-                  <div style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    marginTop: '30px',
-                    padding: '20px',
-                    background: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
-                    borderRadius: '8px',
-                    border: isDarkMode ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgba(0,0,0,0.05)'
-                  }}>
-                    <FigmaExportButton
-                      designData={getCurrentDesignData()}
-                      isDarkMode={isDarkMode}
-                      size="small"
-                      currentStep="wireframe"
-                      placement="corner"
-                    />
-
-                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                      {/* Generation status indicator */}
-                      {wireframeLoading && !wireframeGenerationComplete && (
-                        <div style={{
-                          padding: '8px 16px',
-                          background: isDarkMode ? 'rgba(24, 144, 255, 0.1)' : 'rgba(24, 144, 255, 0.1)',
-                          borderRadius: '6px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '8px',
-                          border: '1px solid #1890ff'
-                        }}>
-                          <LoadingOutlined style={{ color: '#1890ff' }} />
-                          <Text style={{ color: '#1890ff', fontSize: '14px', fontWeight: '500' }}>
-                            {isWaitingBetweenRequests
-                              ? `Next screen in ${waitingCountdown}s`
-                              : `Generating screen ${currentScreenIndex + 1}...`
-                            }
-                          </Text>
-                        </div>
-                      )}
-
-                      {/* Completion indicator */}
-                      {wireframeGenerationComplete && (
-                        <div style={{
-                          padding: '8px 16px',
-                          background: isDarkMode ? 'rgba(82, 196, 26, 0.1)' : 'rgba(82, 196, 26, 0.1)',
-                          borderRadius: '6px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '8px',
-                          border: '1px solid #52c41a'
-                        }}>
-                          <CheckOutlined style={{ color: '#52c41a' }} />
-                          <Text style={{ color: '#52c41a', fontSize: '14px', fontWeight: '500' }}>
-                            All wireframes generated!
-                          </Text>
-                        </div>
-                      )}
-
-                      {/* Generate HTML Pages Button */}
-                      <Button
-                        type="primary"
-                        size="large"
-                        icon={<CodeOutlined />}
-                        onClick={handleGenerateHtmlPages}
-                        loading={htmlPagesLoading}
-                        disabled={!wireframeGenerationComplete && wireframeLoading}
-                        style={{
-                          ...buttonStyles,
-                          opacity: (!wireframeGenerationComplete && wireframeLoading) ? 0.6 : 1
-                        }}
-                      >
-                        Generate HTML Pages
-                      </Button>
-
-                      {/* Retry wireframe button if there's an error */}
-                      {wireframeError && (
-                        <Button
-                          type="default"
-                          size="large"
-                          icon={<ReloadOutlined />}
-                          onClick={handleRetryWireframeGeneration}
-                          loading={wireframeLoading}
-                          style={{
-                            ...buttonStyles,
-                            backgroundColor: 'transparent',
-                            color: isDarkMode ? '#fff' : '#000',
-                            borderColor: '#f5222d'
-                          }}
-                        >
-                          Retry Wireframes
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        )}
-
-        {/* Step 6: HTML Pages */}
-        {currentStep === 'htmlpages' && (
-          <div>
-            <Title
-              level={4}
-              style={{
-                color: isDarkMode ? '#fff' : '#000',
-                marginBottom: '16px',
-                marginTop: '30px',
-                fontWeight: '500',
-              }}
-            >
-              Step 6: HTML Pages
-            </Title>
-
-            {htmlPagesLoading ? (
-              <div style={{ textAlign: 'center', padding: '60px 0' }}>
-                <Spin indicator={spinIcon} />
-                <Paragraph style={{
-                  marginTop: 24,
-                  color: isDarkMode ? '#fff' : '#333',
-                  fontSize: 18,
-                  fontWeight: 500,
-                }}>
-                  {htmlPagesLoadingMessages[loadingMsgIndex]}
-                </Paragraph>
-              </div>
-            ) : (
-              <>
-                {htmlPagesData && htmlPagesData.length > 0 ? (
-                  <HTMLPagesDisplay
-                    htmlFiles={htmlPagesData}
-                    isDarkMode={isDarkMode}
-                    onRegeneratePages={handleRegenerateHtmlPages}
-                    loading={htmlPagesLoading}
-                    designData={getCurrentDesignData()}
-                  />
-                ) : (
-                  <div>
-                    <div style={{
-                      textAlign: 'center',
-                      padding: '40px 0',
-                      color: isDarkMode ? '#fff' : '#333',
-                      background: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.01)',
-                      borderRadius: '8px',
-                      border: isDarkMode ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgba(0,0,0,0.03)',
-                    }}>
-                      {htmlPagesError ? (
-                        <Text style={{ color: '#f5222d', fontSize: 16 }}>
-                          {htmlPagesError}
-                        </Text>
-                      ) : (
-                        <Text>No HTML pages available. Please try generating again.</Text>
-                      )}
-                    </div>
-
-                    {/* Retry button when HTML pages generation fails */}
-                    {htmlPagesError && (
-                      <div style={{
-                        display: 'flex',
-                        justifyContent: 'flex-end',
-                        gap: '12px',
-                        marginTop: '20px'
-                      }}>
-                        <Button
-                          type="primary"
-                          size="large"
-                          icon={<ReloadOutlined />}
-                          onClick={handleGenerateHtmlPages}
-                          loading={htmlPagesLoading}
-                          style={buttonStyles}
-                        >
-                          Retry Generate HTML Pages
-                        </Button>
                       </div>
                     )}
-                  </div>
+
+                    {/* Show placeholder/error only if no screens and not loading */}
+                    {wireframeScreens.length === 0 && !wireframeLoading && (
+                      <div>
+                        <div style={{
+                          textAlign: 'center',
+                          padding: '40px 0',
+                          color: isDarkMode ? '#fff' : '#333',
+                          background: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.01)',
+                          borderRadius: '8px',
+                          border: isDarkMode ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgba(0,0,0,0.03)',
+                        }}>
+                          {wireframeError ? (
+                            <Text style={{ color: '#f5222d', fontSize: 16 }}>
+                              {wireframeError}
+                            </Text>
+                          ) : (
+                            <Text>No wireframe data available. You can skip this step and generate HTML pages directly.</Text>
+                          )}
+                        </div>
+
+                        <div style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          marginTop: '20px'
+                        }}>
+                          <FigmaExportButton
+                            designData={getCurrentDesignData()}
+                            isDarkMode={isDarkMode}
+                            size="small"
+                            currentStep="wireframe"
+                            placement="corner"
+                          />
+
+                          <div style={{ display: 'flex', gap: '12px' }}>
+                            {wireframeError && (
+                              <Button
+                                type="default"
+                                size="large"
+                                icon={<ReloadOutlined />}
+                                onClick={handleRetryWireframeGeneration}
+                                loading={wireframeLoading}
+                                style={{ ...buttonStyles, backgroundColor: 'transparent', color: isDarkMode ? '#fff' : '#000' }}
+                              >
+                                Retry Generate Wireframe
+                              </Button>
+                            )}
+                            <Button
+                              type="primary"
+                              size="large"
+                              icon={<CodeOutlined />}
+                              onClick={handleGenerateHtmlPages}
+                              loading={htmlPagesLoading}
+                              style={buttonStyles}
+                            >
+                              Generate HTML Pages
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
-              </>
+              </div>
+            )}
+
+            {/* Step 6: HTML Pages */}
+            {currentStep === 'htmlpages' && (
+              <div>
+                <Title
+                  level={4}
+                  style={{
+                    color: isDarkMode ? '#fff' : '#000',
+                    marginBottom: '16px',
+                    marginTop: '30px',
+                    fontWeight: '500',
+                  }}
+                >
+                  Step 6: HTML Pages
+                </Title>
+
+                {htmlPagesLoading ? (
+                  <div style={{ textAlign: 'center', padding: '60px 0' }}>
+                    <Spin indicator={spinIcon} />
+                    <Paragraph style={{
+                      marginTop: 24,
+                      color: isDarkMode ? '#fff' : '#333',
+                      fontSize: 18,
+                      fontWeight: 500,
+                    }}>
+                      {htmlPagesLoadingMessages[loadingMsgIndex]}
+                    </Paragraph>
+                  </div>
+                ) : (
+                  <>
+                    {htmlPagesData && htmlPagesData.length > 0 ? (
+                      <HTMLPagesDisplay
+                        htmlFiles={htmlPagesData}
+                        isDarkMode={isDarkMode}
+                        onRegeneratePages={handleRegenerateHtmlPages}
+                        loading={htmlPagesLoading}
+                        designData={getCurrentDesignData()}
+                      />
+                    ) : (
+                      <div>
+                        <div style={{
+                          textAlign: 'center',
+                          padding: '40px 0',
+                          color: isDarkMode ? '#fff' : '#333',
+                          background: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.01)',
+                          borderRadius: '8px',
+                          border: isDarkMode ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgba(0,0,0,0.03)',
+                        }}>
+                          {htmlPagesError ? (
+                            <Text style={{ color: '#f5222d', fontSize: 16 }}>
+                              {htmlPagesError}
+                            </Text>
+                          ) : (
+                            <Text>No HTML pages available. Please try generating again.</Text>
+                          )}
+                        </div>
+
+                        {/* Retry button when HTML pages generation fails */}
+                        {htmlPagesError && (
+                          <div style={{
+                            display: 'flex',
+                            justifyContent: 'flex-end',
+                            gap: '12px',
+                            marginTop: '20px'
+                          }}>
+                            <Button
+                              type="primary"
+                              size="large"
+                              icon={<ReloadOutlined />}
+                              onClick={handleGenerateHtmlPages}
+                              loading={htmlPagesLoading}
+                              style={buttonStyles}
+                            >
+                              Retry Generate HTML Pages
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
             )}
           </div>
-        )}
-      </div>
     </div>
-  );
+      );
 };
 
-// Small helper component for showing the original description
-const OriginalDescription = ({ description, isDarkMode }) => {
-  const { Text, Paragraph } = Typography;
+      // Small helper component for showing the original description
+      const OriginalDescription = ({description, isDarkMode}) => {
+  const {Text, Paragraph} = Typography;
 
-  return (
-    <>
-      <Text style={{
-        fontSize: '13px',
-        textTransform: 'uppercase',
-        letterSpacing: '1px',
-        color: isDarkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)',
-        fontWeight: '600',
-      }}>
-        Your Description
-      </Text>
-      <Paragraph style={{
-        margin: '8px 0 0 0',
-        color: isDarkMode ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.85)',
-        fontSize: '15px',
-        lineHeight: '1.6',
-      }}>
-        {description}
-      </Paragraph>
-    </>
-  );
+      return (
+      <>
+        <Text style={{
+          fontSize: '13px',
+          textTransform: 'uppercase',
+          letterSpacing: '1px',
+          color: isDarkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)',
+          fontWeight: '600',
+        }}>
+          Your Description
+        </Text>
+        <Paragraph style={{
+          margin: '8px 0 0 0',
+          color: isDarkMode ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.85)',
+          fontSize: '15px',
+          lineHeight: '1.6',
+        }}>
+          {description}
+        </Paragraph>
+      </>
+      );
 };
 
-export default DocumentsPage;
+      export default DocumentsPage;

@@ -2,7 +2,7 @@ import https from 'https';
 import fs from 'fs';
 import path from 'path';
 
-const GROQ_API_KEY = process.env.GROQ_API_KEY || "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";
+const GROQ_API_KEY = process.env.GROQ_API_KEY || "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";
 
 export async function makeGroqRequest(prompt) {
     const payload = {
@@ -156,7 +156,7 @@ TECHNICAL REQUIREMENTS:
 9. Include hover states and smooth transitions for better UX.
 
 DESIGN GUIDELINES:
-- Use a modern, clean design aesthetic
+- Use a modern, clean design aesthetic and chose a theme that fits the use case
 - Implement a consistent color scheme throughout
 - Use readable typography with proper hierarchy
 - Include proper spacing and visual hierarchy
@@ -174,12 +174,15 @@ OUTPUT FORMAT:
 - Each screen must have a consistent design like a real web application
 - Include proper DOCTYPE, meta tags, and title for each page
 - Use consistent CSS variables for colors, fonts, and spacing
+- dont generate unecessary CSS or long CSS
 
 Only output the raw HTML code for each file. Do not include explanations or markdown formatting.
         `;
 
 
         console.log(`Generating HTML pages for: ${siteType}`);
+
+        console.log(prompt)
 
         // Send request to Groq API
         const response = await makeGroqRequest(prompt);
