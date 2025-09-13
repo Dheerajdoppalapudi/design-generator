@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Tabs, Button, Space, Typography, Spin, message, Modal, Input } from 'antd';
-import { EyeOutlined, CodeOutlined, DownloadOutlined, EditOutlined, SaveOutlined } from '@ant-design/icons';
-import FigmaExportButton from './FigmaExportButton';
+import { Card, Tabs, Button, Space, Typography, Spin, message, Modal, Input, Select } from 'antd';
+import { EyeOutlined, CodeOutlined, DownloadOutlined, EditOutlined, SaveOutlined, ReloadOutlined } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
 const { TabPane } = Tabs;
 const { TextArea } = Input;
+const { Option } = Select;
 
 const HTMLPagesDisplay = ({ 
   htmlFiles = [], 
@@ -19,6 +19,8 @@ const HTMLPagesDisplay = ({
   const [editableFiles, setEditableFiles] = useState({});
   const [editingFile, setEditingFile] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [selectedPage, setSelectedPage] = useState(null);
+  const [textFieldValue, setTextFieldValue] = useState('');
 
   // Initialize editable files when htmlFiles change
   useEffect(() => {
@@ -28,6 +30,8 @@ const HTMLPagesDisplay = ({
         filesMap[index] = { ...file };
       });
       setEditableFiles(filesMap);
+      // Set first page as default selection
+      setSelectedPage(Object.keys(filesMap)[0]);
     }
   }, [htmlFiles]);
 
@@ -74,6 +78,17 @@ const HTMLPagesDisplay = ({
     Object.values(editableFiles).forEach(file => {
       setTimeout(() => downloadFile(file, file.content), 100);
     });
+  };
+
+  // Toggle between preview and code view, and handle editing
+  const handleCodeEdit = () => {
+    if (viewMode === 'code') {
+      // If already in code view, open edit modal
+      handleEditFile(parseInt(activeTab));
+    } else {
+      // Switch to code view
+      setViewMode('code');
+    }
   };
 
   // Render HTML in iframe
@@ -174,10 +189,10 @@ const HTMLPagesDisplay = ({
             </Button>
             <Button
               type={viewMode === 'code' ? 'primary' : 'default'}
-              icon={<CodeOutlined />}
-              onClick={() => setViewMode('code')}
+              icon={viewMode === 'code' ? <EditOutlined /> : <CodeOutlined />}
+              onClick={handleCodeEdit}
             >
-              Code
+              {viewMode === 'code' ? 'Edit Code' : 'View Code'}
             </Button>
           </Button.Group>
 
@@ -188,24 +203,69 @@ const HTMLPagesDisplay = ({
             Download All
           </Button>
 
-          <FigmaExportButton
-            designData={{
-              ...designData,
-              htmlFiles: Object.values(editableFiles)
-            }}
-            isDarkMode={isDarkMode}
-            size="small"
-            currentStep="htmlpages"
-            placement="inline"
-          />
-
           <Button
-            type="primary"
+            icon={<ReloadOutlined />}
             onClick={onRegeneratePages}
+            type="default"
           >
             Regenerate Pages
           </Button>
         </Space>
+      </div>
+
+      {/* Page selector and text field */}
+      <div style={{ 
+        display: 'flex', 
+        gap: '0px', 
+        alignItems: 'end',
+        marginBottom: '20px',
+        flexWrap: 'nowrap'
+      }}>
+        <div style={{ width: '200px' }}>
+          <Text style={{ 
+            color: isDarkMode ? '#fff' : '#000',
+            fontSize: '14px',
+            fontWeight: '500',
+            marginBottom: '8px',
+            display: 'block'
+          }}>
+            Select Page:
+          </Text>
+          <Select
+            value={selectedPage}
+            onChange={setSelectedPage}
+            style={{ 
+              width: '100%'
+            }}
+            placeholder="Choose a page"
+          >
+            {Object.entries(editableFiles).map(([index, file]) => (
+              <Option key={index} value={index}>
+                {file.filename}
+              </Option>
+            ))}
+          </Select>
+        </div>
+        
+        <div style={{ flex: '1', marginLeft: '-1px' }}>
+          <Text style={{ 
+            color: isDarkMode ? '#fff' : '#000',
+            fontSize: '14px',
+            fontWeight: '500',
+            marginBottom: '8px',
+            display: 'block'
+          }}>
+            Notes/Comments:
+          </Text>
+          <Input
+            value={textFieldValue}
+            onChange={(e) => setTextFieldValue(e.target.value)}
+            placeholder="Add notes or comments about the selected page..."
+            style={{ 
+              width: '100%'
+            }}
+          />
+        </div>
       </div>
 
       {/* Tabs for different HTML files */}
@@ -220,29 +280,6 @@ const HTMLPagesDisplay = ({
           tabBarStyle={{
             marginBottom: '20px'
           }}
-          tabBarExtraContent={
-            <Space>
-              <Button
-                size="small"
-                icon={<EditOutlined />}
-                onClick={() => handleEditFile(parseInt(activeTab))}
-              >
-                Edit
-              </Button>
-              <Button
-                size="small"
-                icon={<DownloadOutlined />}
-                onClick={() => {
-                  const currentFile = editableFiles[parseInt(activeTab)];
-                  if (currentFile) {
-                    downloadFile(currentFile, currentFile.content);
-                  }
-                }}
-              >
-                Download
-              </Button>
-            </Space>
-          }
         >
           {Object.entries(editableFiles).map(([index, file]) => (
             <TabPane

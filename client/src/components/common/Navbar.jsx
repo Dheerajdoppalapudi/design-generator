@@ -7,7 +7,8 @@ import {
   FileTextOutlined, 
   TeamOutlined,
   BulbOutlined,
-  BulbFilled
+  BulbFilled,
+  DeploymentUnitOutlined
 } from "@ant-design/icons";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { AuthContext } from "../../context/AuthContext";
@@ -86,6 +87,9 @@ const Navbar = () => {
           </Menu.Item>
           <Menu.Item key="/documents" icon={<FileTextOutlined />}>
             <Link to="/documents">Documents</Link>
+          </Menu.Item>
+          <Menu.Item key="/maindev" icon={<DeploymentUnitOutlined />}>
+            <Link to="/maindev">MainDev</Link>
           </Menu.Item>
         </Menu>
       </div>

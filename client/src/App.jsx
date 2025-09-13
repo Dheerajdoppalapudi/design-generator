@@ -9,7 +9,8 @@ import {
   BulbOutlined,
   BulbFilled,
   LogoutOutlined,
-  DashboardOutlined
+  DashboardOutlined,
+  DeploymentUnitOutlined
 } from '@ant-design/icons';
 import { AuthProvider, AuthContext } from './context/AuthContext';
 import { ThemeProvider, ThemeContext } from './context/ThemeContext';
@@ -23,6 +24,7 @@ import Profile from './components/user/Profile';
 import AdminDashboard from './components/admin/AdminDashboard';
 import HomePage from './pages/HomePage';
 import DocumentsPage from './pages/DocumentsPage';
+import MainDev from './pages/MainDev';
 
 const { Header, Content, Footer, Sider } = Layout;
 const { Title, Text } = Typography;
@@ -184,6 +186,9 @@ const SidebarComponent = () => {
               <Menu.Item key="/documents" icon={<FileOutlined />}>
                 <Link to="/documents">Design Generation</Link>
               </Menu.Item>
+              <Menu.Item key="/maindev" icon={<DeploymentUnitOutlined />}>
+                <Link to="/maindev">Main Dev</Link>
+              </Menu.Item>
               
               <Menu.Item key="/profile" icon={<UserOutlined />}>
                 <Link to="/profile">Profile</Link>
@@ -311,6 +316,11 @@ const AppContent = () => {
               <Route path="/documents" element={
                 <ProtectedRoute>
                   <DocumentsPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/maindev" element={
+                <ProtectedRoute>
+                  <MainDev />
                 </ProtectedRoute>
               } />
               <Route path="/profile" element={
